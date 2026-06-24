@@ -59,6 +59,49 @@ def parse_excel(ws):
 
     return daily_records
 
+def compute_weekly_summary(daily_records):
+    """Compute weekly sales summaries from daily records.
+
+    Week = Monday (weekday 0) to Sunday (weekday 6).
+    For each week, compute total_sales and target_pending.
+
+    Args:
+        daily_records: List of dicts with 'date' and 'daily_sales'
+
+    Returns:
+        Dict keyed by week_start_date (datetime.date).
+        Each value: {"week_start_date": date, "week_end_date": date,
+                     "total_sales": float, "target_pending": float}
+    """
+    if not daily_records:
+        return {}
+
+    # Group records by week
+    weeks = {}
+    for record in daily_records:
+        date = record["date"]
+        week_start = date - timedelta(days=date.weekday())  # Monday of that week
+        week_end = week_start + timedelta(days=6)  # Sunday of that week
+
+        if week_start not in weeks:
+            weeks[week_start] = {
+                "week_start_date": week_start,
+                "week_end_date": week_end,
+                "total_sales": 0,
+            }
+
+        weeks[week_start]["total_sales"] += record["daily_sales"]
+
+    # Compute target_pending for each week
+    for week_start, week_data in weeks.items():
+        total_sales = week_data["total_sales"]
+        if total_sales >= WEEKLY_TARGET:
+            week_data["target_pending"] = 0
+        else:
+            week_data["target_pending"] = WEEKLY_TARGET - total_sales
+
+    return weeks
+
 def main():
     """Main entry point for the fetch and compute script."""
     # Error handling: check env var
@@ -91,6 +134,10 @@ def main():
         else:
             print(f"Parsed {len(daily_records)} daily records from Excel")
             print(f"Date range: {daily_records[0]['date']} to {daily_records[-1]['date']}")
+
+        # Compute weekly summaries
+        weekly_summary = compute_weekly_summary(daily_records)
+        print(f"Computed {len(weekly_summary)} weekly summaries")
 
         wb.close()
 
