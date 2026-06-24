@@ -1,6 +1,6 @@
 # Sales Dashboard
 
-A full-stack sales dashboard that reads live data from a locally synced SharePoint Excel file, computes business KPI metrics (weekly sales, targets, monthly totals), and displays them with an interactive bar chart.
+A full-stack sales dashboard that reads live data from SharePoint via Microsoft Graph API, computes business KPI metrics (weekly sales, targets, monthly totals), and displays them with an interactive bar chart.
 
 ## Project Structure
 
@@ -18,48 +18,70 @@ d:\Salon Target Dashboard\
 ## Prerequisites
 
 - **Python 3.8+**
-- **openpyxl** library: `pip install openpyxl`
-- **Daily_Invoice.xlsx** synced locally via OneDrive (see Setup below)
+- **openpyxl** and **requests** libraries: `pip install openpyxl requests`
+- **Azure AD app registration** with Microsoft Graph API access (see Setup below)
 
 ## Setup
 
-### 1. Sync the SharePoint Excel File Locally
+### 1. Register an Azure AD Application
 
-1. Open OneDrive on your machine
-2. Navigate to the SharePoint site/library where `Daily_Invoice.xlsx` is stored
-3. Enable "Sync" to download and auto-sync the file to your machine
-4. Note the full local file path (e.g., `C:\Users\YourUsername\OneDrive\Accounts\Daily_Invoice.xlsx`)
+The dashboard fetches `Daily_Invoice.xlsx` from SharePoint using Microsoft Graph API, which requires Azure AD authentication.
 
-### 2. Set the Environment Variable
+1. Go to the [Azure Portal](https://portal.azure.com)
+2. Navigate to **Azure Active Directory** → **App registrations**
+3. Click **+ New registration**
+   - **Name:** `Salon Target Dashboard` (or your preferred name)
+   - **Supported account types:** "Accounts in this organizational directory only"
+   - Click **Register**
+4. After creation, note your **Tenant ID** and **Application (client) ID** (shown on the Overview page)
 
-Set the `EXCEL_FILE_PATH` environment variable to point to the synced Excel file.
+### 2. Create a Client Secret
 
-**On Windows (PowerShell):**
-```powershell
-$env:EXCEL_FILE_PATH = "C:\path\to\your\Daily_Invoice.xlsx"
-```
+1. In the app registration, go to **Certificates & secrets**
+2. Click **+ New client secret**
+   - **Description:** `Dashboard access`
+   - **Expires:** Choose based on your policy (e.g., 6 months, 2 years)
+   - Click **Add**
+3. Copy the secret **Value** (not the ID) — this is shown only once
+   - **Important:** Save this securely; you'll need it for `.env`
 
-**On Windows (Command Prompt):**
-```cmd
-set EXCEL_FILE_PATH=C:\path\to\your\Daily_Invoice.xlsx
-```
+### 3. Grant Microsoft Graph Permissions
 
-**On macOS/Linux (Bash/Zsh):**
+1. In the app registration, go to **API permissions**
+2. Click **+ Add a permission**
+   - Select **Microsoft Graph** → **Application permissions**
+   - Search for and select **Sites.Read.All**
+   - Click **Add permissions**
+3. Click **Grant admin consent for [Your Org]** to approve the permission
+
+**Permissions required:**
+- `Sites.Read.All` (application permission) — Read access to SharePoint sites and files
+
+### 4. Create `.env` File
+
+1. In the project root (same directory as `fetch_and_compute.py`), create a file named `.env` (not `.env.example`)
+2. Add your Azure credentials:
+   ```
+   AZURE_TENANT_ID=<your-tenant-id>
+   AZURE_CLIENT_ID=<your-client-id>
+   AZURE_CLIENT_SECRET=<your-client-secret>
+   ```
+   - Replace `<your-tenant-id>`, `<your-client-id>`, and `<your-client-secret>` with values from the Azure Portal
+3. **Important:** `.env` is listed in `.gitignore` and will never be committed. Keep it secure.
+
+### 5. Install Python Dependencies
+
 ```bash
-export EXCEL_FILE_PATH="/path/to/your/Daily_Invoice.xlsx"
+pip install openpyxl requests python-dotenv
 ```
 
-### 3. Install Python Dependencies
-
-```bash
-pip install openpyxl
-```
+(The `python-dotenv` package loads `.env` automatically; `openpyxl` and `requests` are used by the script)
 
 ## Running the Dashboard
 
 ### Step 1: Fetch and Compute Data
 
-Run the backend script to read the Excel file, compute KPI metrics, and generate the dashboard JSON:
+Run the backend script to fetch the Excel file from SharePoint, compute KPI metrics, and generate the dashboard JSON:
 
 ```bash
 python fetch_and_compute.py
@@ -67,7 +89,8 @@ python fetch_and_compute.py
 
 Expected output:
 ```
-Excel file loaded successfully
+Fetching Daily_Invoice.xlsx from SharePoint...
+✓ Successfully fetched and opened Daily_Invoice.xlsx
 Parsed 50 daily records from Excel
 Date range: 2026-05-01 to 2026-06-22
 Computed 8 weekly summaries
@@ -79,8 +102,10 @@ SUCCESS: Dashboard data computed and written
 ```
 
 If you see errors:
-- **"EXCEL_FILE_PATH environment variable not set"** — Set the env var as shown in Setup Step 2
-- **"Excel file not found"** — Verify the path in EXCEL_FILE_PATH is correct and the file exists
+- **"Azure AD credentials not configured"** — Verify `.env` file exists in the project root with `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, and `AZURE_CLIENT_SECRET`
+- **"Failed to authenticate with Azure AD"** — Check that credentials in `.env` are correct; verify the app was granted `Sites.Read.All` permission with admin consent
+- **"Failed to resolve SharePoint share link"** — Verify the SharePoint site and file still exist; check that the Graph API can access them
+- **"Failed to download file from SharePoint"** — Network or permission issue; try running the script again
 - **"Sheet 'Daily Total Sales' not found"** — Verify the Excel file has a sheet named "Daily Total Sales"
 
 ### Step 2: View the Dashboard
