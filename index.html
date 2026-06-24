@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Dashboard</title>
+
+    <!-- Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <!-- Chart.js Data Labels Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <style>
+        /* CSS will be added in Task 8 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+            background-color: #fff;
+            padding: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- KPI Cards Section -->
+        <div class="kpi-cards">
+            <div class="kpi-card">
+                <div class="kpi-value" id="current-date-label">-</div>
+                <div class="kpi-label">Current Date Label</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="current-week-sales">-</div>
+                <div class="kpi-label">Current Week Sales</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="current-week-balance">-</div>
+                <div class="kpi-label">Current Week Balance</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="remaining-days">-</div>
+                <div class="kpi-label">Remaining Days</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="previous-week-sales">-</div>
+                <div class="kpi-label">Previous Week Sales</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="monthly-sales">-</div>
+                <div class="kpi-label">Monthly Sales</div>
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="chart-card">
+            <div class="chart-title">Sum of daily_sales by date</div>
+            <div class="chart-container">
+                <canvas id="daily-sales-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript will be added in Tasks 9-10
+        console.log("Dashboard loading...");
+    </script>
+</body>
+</html>
