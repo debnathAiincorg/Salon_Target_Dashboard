@@ -187,6 +187,8 @@ def generate_chart_data(current_month_sales):
     chart_data = []
     for record in current_month_sales:
         date_obj = record["date"]
+        # Optional: use "%b" instead of "%B" for abbreviated month names (e.g., "Jun 24" vs "June 24")
+        # Abbreviated format may reduce label crowding with a full month of data
         month_name = date_obj.strftime("%B")
         day = date_obj.day
         date_str = f"{month_name} {day}"
