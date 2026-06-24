@@ -12,5 +12,4 @@ venv/
 env/
 .vscode/
 .superpowers/
-dashboard-data.json
 *.xlsx
