@@ -175,6 +175,52 @@ def compute_kpi_metrics(daily_records, weekly_summary):
         "current_month_sales": current_month_sales,  # For chart data
     }
 
+def generate_chart_data(current_month_sales):
+    """Generate chart data from current month sales records.
+
+    Args:
+        current_month_sales: List of dicts with 'date' and 'daily_sales'
+
+    Returns:
+        List of dicts with 'date' (formatted string) and 'daily_sales' (int)
+    """
+    chart_data = []
+    for record in current_month_sales:
+        date_obj = record["date"]
+        month_name = date_obj.strftime("%B")
+        day = date_obj.day
+        date_str = f"{month_name} {day}"
+
+        chart_data.append({
+            "date": date_str,
+            "daily_sales": int(record["daily_sales"])
+        })
+
+    return chart_data
+
+def write_dashboard_json(kpi, chart_data, output_file):
+    """Write dashboard data to JSON file.
+
+    Args:
+        kpi: Dict with KPI metrics (current_date_label, current_week_sales, etc.)
+        chart_data: List of dicts with chart data
+        output_file: Path to output JSON file
+    """
+    dashboard_data = {
+        "current_date_label": kpi["current_date_label"],
+        "current_week_sales": int(kpi["current_week_sales"]),
+        "current_week_balance": int(kpi["current_week_balance"]),
+        "remaining_days": kpi["remaining_days"],
+        "previous_week_sales": int(kpi["previous_week_sales"]),
+        "monthly_sales": int(kpi["monthly_sales"]),
+        "daily_chart_data": chart_data,
+    }
+
+    with open(output_file, 'w') as f:
+        json.dump(dashboard_data, f, indent=2)
+
+    print(f"Dashboard data written to {output_file}")
+
 def main():
     """Main entry point for the fetch and compute script."""
     # Error handling: check env var
@@ -217,6 +263,14 @@ def main():
         print(f"Current Date: {kpi['current_date_label']}")
         print(f"Current Week Sales: {kpi['current_week_sales']}")
         print(f"Monthly Sales: {kpi['monthly_sales']}")
+
+        # Generate chart data
+        chart_data = generate_chart_data(kpi["current_month_sales"])
+
+        # Write output JSON
+        write_dashboard_json(kpi, chart_data, OUTPUT_FILE)
+
+        print("SUCCESS: Dashboard data computed and written")
 
         wb.close()
 
