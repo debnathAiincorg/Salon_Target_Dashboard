@@ -102,6 +102,79 @@ def compute_weekly_summary(daily_records):
 
     return weeks
 
+def get_current_month_sales(daily_records):
+    """Filter daily records to current month only.
+
+    Args:
+        daily_records: List of dicts with 'date' and 'daily_sales'
+
+    Returns:
+        Filtered list, sorted by date ascending
+    """
+    today = datetime.now().date()
+    current_month = [
+        record for record in daily_records
+        if record["date"].year == today.year and record["date"].month == today.month
+    ]
+    return current_month
+
+def compute_kpi_metrics(daily_records, weekly_summary):
+    """Compute all KPI metrics for the dashboard.
+
+    Args:
+        daily_records: List of dicts with 'date' and 'daily_sales'
+        weekly_summary: Dict keyed by week_start_date
+
+    Returns:
+        Dict with KPI metrics:
+        - current_date_label: str (e.g., "23 May")
+        - current_week_sales: float
+        - current_week_balance: float (target_pending)
+        - remaining_days: int
+        - previous_week_sales: float
+        - monthly_sales: float
+    """
+    today = datetime.now().date()
+
+    # 1. Current Date Label
+    current_date_label = f"{today.day} {today.strftime('%B')}"
+
+    # 2. Current Week Sales and Balance
+    # Find most recent week_start_date <= today
+    week_starts = sorted([ws for ws in weekly_summary.keys() if ws <= today], reverse=True)
+    if week_starts:
+        current_week_start = week_starts[0]
+        current_week_sales = weekly_summary[current_week_start]["total_sales"]
+        current_week_balance = weekly_summary[current_week_start]["target_pending"]
+    else:
+        current_week_sales = 0
+        current_week_balance = 0
+
+    # 3. Remaining Days
+    remaining_days = 7 - today.weekday()
+
+    # 4. Previous Week Sales
+    # Find second-most-recent week
+    if len(week_starts) >= 2:
+        previous_week_start = week_starts[1]
+        previous_week_sales = weekly_summary[previous_week_start]["total_sales"]
+    else:
+        previous_week_sales = 0
+
+    # 5. Monthly Sales
+    current_month_sales = get_current_month_sales(daily_records)
+    monthly_sales = sum(record["daily_sales"] for record in current_month_sales)
+
+    return {
+        "current_date_label": current_date_label,
+        "current_week_sales": current_week_sales,
+        "current_week_balance": current_week_balance,
+        "remaining_days": remaining_days,
+        "previous_week_sales": previous_week_sales,
+        "monthly_sales": monthly_sales,
+        "current_month_sales": current_month_sales,  # For chart data
+    }
+
 def main():
     """Main entry point for the fetch and compute script."""
     # Error handling: check env var
@@ -138,6 +211,12 @@ def main():
         # Compute weekly summaries
         weekly_summary = compute_weekly_summary(daily_records)
         print(f"Computed {len(weekly_summary)} weekly summaries")
+
+        # Compute KPI metrics
+        kpi = compute_kpi_metrics(daily_records, weekly_summary)
+        print(f"Current Date: {kpi['current_date_label']}")
+        print(f"Current Week Sales: {kpi['current_week_sales']}")
+        print(f"Monthly Sales: {kpi['monthly_sales']}")
 
         wb.close()
 
