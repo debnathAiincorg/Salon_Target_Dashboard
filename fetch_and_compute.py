@@ -6,10 +6,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import openpyxl
 import requests
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load .env file if available (local development)
+# In CI/GitHub Actions, env vars are injected directly; dotenv is not needed
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # Constants
 WEEKLY_TARGET = 15000
