@@ -152,8 +152,197 @@
     </div>
 
     <script>
-        // JavaScript will be added in Tasks 9-10
-        console.log("Dashboard loading...");
+        // Constants
+        const AUTO_REFRESH_INTERVAL_MS = 30000;  // 30 seconds
+        const CHART_DATA_URL = "dashboard-data.json";
+
+        let dashboardChart = null;
+        let lastDataString = null;  // For change detection
+
+        /**
+         * Format a number with thousands separators.
+         * Example: 17629 -> "17,629"
+         */
+        function formatNumber(num) {
+            if (typeof num !== 'number') {
+                return String(num);
+            }
+            return Math.floor(num).toLocaleString('en-US');
+        }
+
+        /**
+         * Fetch dashboard data from JSON file with cache-busting.
+         */
+        async function loadDashboardData() {
+            try {
+                const url = `${CHART_DATA_URL}?t=${Date.now()}`;
+                const response = await fetch(url, { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Render KPI cards with data.
+         */
+        function renderKPICards(data) {
+            if (!data) {
+                console.log('No data to render');
+                return;
+            }
+
+            document.getElementById('current-date-label').textContent = data.current_date_label || '-';
+            document.getElementById('current-week-sales').textContent = formatNumber(data.current_week_sales);
+            document.getElementById('current-week-balance').textContent = formatNumber(data.current_week_balance);
+            document.getElementById('remaining-days').textContent = formatNumber(data.remaining_days);
+            document.getElementById('previous-week-sales').textContent = formatNumber(data.previous_week_sales);
+            document.getElementById('monthly-sales').textContent = formatNumber(data.monthly_sales);
+        }
+
+        /**
+         * Render bar chart.
+         */
+        function renderChart(data) {
+            if (!data || !data.daily_chart_data || data.daily_chart_data.length === 0) {
+                console.log('No chart data to render');
+                return;
+            }
+
+            const chartCanvas = document.getElementById('daily-sales-chart');
+            const ctx = chartCanvas.getContext('2d');
+
+            const dates = data.daily_chart_data.map(d => d.date);
+            const sales = data.daily_chart_data.map(d => d.daily_sales);
+
+            // Calculate Y-axis max with 10% padding
+            const maxSales = Math.max(...sales);
+            const yAxisMax = Math.ceil((maxSales * 1.1) / 2000) * 2000;
+
+            // Destroy existing chart if it exists
+            if (dashboardChart) {
+                dashboardChart.destroy();
+            }
+
+            // Create new chart
+            dashboardChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Sum of daily_sales',
+                            data: sales,
+                            backgroundColor: '#1ca0f2',
+                            borderColor: '#1ca0f2',
+                            borderWidth: 0,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'x',
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: yAxisMax,
+                            ticks: {
+                                stepSize: 2000,
+                                callback: function(value) {
+                                    return value.toLocaleString('en-US');
+                                }
+                            },
+                            grid: {
+                                drawBorder: true,
+                                color: 'rgba(0, 0, 0, 0.1)',
+                                lineWidth: 1,
+                            },
+                            title: {
+                                display: true,
+                                text: 'Sum of daily_sales'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'date'
+                            },
+                            grid: {
+                                display: false,
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        datalabels: {
+                            display: true,
+                            anchor: 'end',
+                            align: 'end',
+                            offset: 5,
+                            color: '#f17777',
+                            font: {
+                                weight: 'bold',
+                                size: 12,
+                            },
+                            formatter: function(value) {
+                                return value.toLocaleString('en-US');
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+
+        /**
+         * Main render function: update KPI cards and chart.
+         */
+        function render(data) {
+            renderKPICards(data);
+            renderChart(data);
+        }
+
+        /**
+         * Initialize the dashboard and set up auto-refresh.
+         */
+        async function init() {
+            console.log('Initializing dashboard...');
+
+            // Initial load
+            const data = await loadDashboardData();
+            if (data) {
+                render(data);
+                lastDataString = JSON.stringify(data);
+            }
+
+            // Set up auto-refresh
+            setInterval(async () => {
+                const freshData = await loadDashboardData();
+                if (freshData) {
+                    const freshDataString = JSON.stringify(freshData);
+                    if (freshDataString !== lastDataString) {
+                        console.log('Dashboard data changed, updating...');
+                        render(freshData);
+                        lastDataString = freshDataString;
+                    }
+                }
+            }, AUTO_REFRESH_INTERVAL_MS);
+        }
+
+        // Start when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     </script>
 </body>
 </html>
