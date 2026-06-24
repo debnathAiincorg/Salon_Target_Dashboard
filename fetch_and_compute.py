@@ -104,51 +104,59 @@ def fetch_excel_from_sharepoint():
         raise RuntimeError(f"Failed to load Excel file into openpyxl: {e}")
 
 def parse_excel(ws):
-    """Parse 'Daily Total Sales' sheet and return list of daily records.
+    """Parse invoice_transactions sheet and aggregate NET_AMOUNT by DATE.
+
+    Reads raw transaction data from invoice_transactions sheet.
+    Multiple rows per date are summed into one daily_sales record.
 
     Args:
-        ws: openpyxl worksheet object
+        ws: openpyxl worksheet object (invoice_transactions sheet)
 
     Returns:
         List of dicts with keys 'date' (datetime.date) and 'daily_sales' (float),
-        sorted by date ascending. Skips rows where date is None, "Grand Total",
-        or sales value is unparseable.
+        sorted by date ascending. Skips rows where DATE (column C) or
+        NET_AMOUNT (column D) is None or unparseable.
     """
-    daily_records = []
+    # Aggregate by date: {date_obj: total_net_amount}
+    daily_totals = {}
 
-    # Iterate rows starting from row 4 (row 3 is header)
-    for row in ws.iter_rows(min_row=4, values_only=True):
-        date_value, sales_value = row[0], row[1]
+    # Iterate rows starting from row 2 (row 1 is header)
+    # Column C (index 2) = DATE, Column D (index 3) = NET_AMOUNT
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        date_value = row[2] if len(row) > 2 else None
+        net_amount_value = row[3] if len(row) > 3 else None
 
-        # Skip if date is None or "Grand Total"
-        if date_value is None:
+        # Skip if date or net_amount is None
+        if date_value is None or net_amount_value is None:
             continue
-        if isinstance(date_value, str) and date_value.lower() == "grand total":
-            continue
 
-        # Ensure date is a datetime.date object
+        # Parse date
         if isinstance(date_value, datetime):
             date_obj = date_value.date()
         else:
-            # Try parsing as string (fallback)
             try:
                 date_obj = datetime.strptime(str(date_value), "%Y-%m-%d").date()
             except:
                 print(f"WARNING: Skipping row with unparseable date: {date_value}")
                 continue
 
-        # Ensure sales_value is numeric
-        if sales_value is None:
-            continue
+        # Parse net amount
         try:
-            sales_num = float(sales_value)
+            net_amount = float(net_amount_value)
         except:
-            print(f"WARNING: Skipping row with unparseable sales value: {sales_value} for date {date_obj}")
+            print(f"WARNING: Skipping row with unparseable NET_AMOUNT: {net_amount_value} for date {date_obj}")
             continue
 
-        daily_records.append({"date": date_obj, "daily_sales": sales_num})
+        # Aggregate: sum all net amounts for this date
+        if date_obj not in daily_totals:
+            daily_totals[date_obj] = 0
+        daily_totals[date_obj] += net_amount
 
-    # Sort by date ascending
+    # Convert to daily_records format and sort
+    daily_records = [
+        {"date": date_obj, "daily_sales": total}
+        for date_obj, total in daily_totals.items()
+    ]
     daily_records.sort(key=lambda x: x["date"])
 
     return daily_records
@@ -325,14 +333,14 @@ def main():
         wb = fetch_excel_from_sharepoint()
 
         # Step 2: Validate sheet exists
-        if "Daily Total Sales" not in wb.sheetnames:
-            print("ERROR: Sheet 'Daily Total Sales' not found in Excel file")
+        if "invoice_transactions" not in wb.sheetnames:
+            print("ERROR: Sheet 'invoice_transactions' not found in Excel file")
             exit(1)
 
-        ws = wb["Daily Total Sales"]
+        ws = wb["invoice_transactions"]
         print("[OK] Successfully fetched and opened Daily_Invoice.xlsx")
 
-        # Step 3: Parse Excel
+        # Step 3: Parse and aggregate invoice_transactions by date
         daily_records = parse_excel(ws)
 
         if not daily_records:

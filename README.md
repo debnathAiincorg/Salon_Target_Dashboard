@@ -18,7 +18,7 @@ d:\Salon Target Dashboard\
 ## Prerequisites
 
 - **Python 3.8+**
-- **openpyxl** and **requests** libraries: `pip install openpyxl requests`
+- **openpyxl**, **requests**, and **python-dotenv** libraries: `pip install openpyxl requests python-dotenv`
 - **Azure AD app registration** with Microsoft Graph API access (see Setup below)
 
 ## Setup
@@ -178,10 +178,14 @@ The "Current Week Balance" will automatically recalculate based on the new targe
 
 ### Data Processing
 
-1. **Parse Excel:** Read "Daily Total Sales" sheet, skip "Grand Total" row and empty/unparseable rows
-2. **Weekly Buckets:** Group daily sales by week (Monday-Sunday)
-3. **Monthly Filter:** Keep only records from the current calendar month for chart display
-4. **Output:** Write computed metrics and chart data to `dashboard-data.json`
+1. **Parse Excel:** Read raw `invoice_transactions` sheet (not the pivot table)
+   - Each row is one transaction with DATE (column C) and NET_AMOUNT (column D)
+   - Multiple rows per date are aggregated (summed) into daily totals
+   - This approach eliminates pivot table refresh lag — data is always live and current
+2. **Aggregation:** Sum NET_AMOUNT for all rows sharing the same DATE to produce one `{date, daily_sales}` record per day
+3. **Weekly Buckets:** Group daily sales by week (Monday-Sunday)
+4. **Monthly Filter:** Keep only records from the current calendar month for chart display
+5. **Output:** Write computed metrics and chart data to `dashboard-data.json`
 
 ## Troubleshooting
 
