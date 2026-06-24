@@ -60,13 +60,15 @@ The dashboard fetches `Daily_Invoice.xlsx` from SharePoint using Microsoft Graph
 ### 4. Create `.env` File
 
 1. In the project root (same directory as `fetch_and_compute.py`), create a file named `.env` (not `.env.example`)
-2. Add your Azure credentials:
+2. Add your Azure credentials and SharePoint configuration:
    ```
    AZURE_TENANT_ID=<your-tenant-id>
    AZURE_CLIENT_ID=<your-client-id>
    AZURE_CLIENT_SECRET=<your-client-secret>
+   SHAREPOINT_SHARE_LINK=<your-sharepoint-share-link>
    ```
    - Replace `<your-tenant-id>`, `<your-client-id>`, and `<your-client-secret>` with values from the Azure Portal
+   - Replace `<your-sharepoint-share-link>` with the SharePoint share link to `Daily_Invoice.xlsx`
 3. **Important:** `.env` is listed in `.gitignore` and will never be committed. Keep it secure.
 
 ### 5. Install Python Dependencies
@@ -103,10 +105,11 @@ SUCCESS: Dashboard data computed and written
 
 If you see errors:
 - **"Azure AD credentials not configured"** — Verify `.env` file exists in the project root with `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, and `AZURE_CLIENT_SECRET`
+- **"SharePoint share link not configured"** — Verify `SHAREPOINT_SHARE_LINK` is set in `.env`
 - **"Failed to authenticate with Azure AD"** — Check that credentials in `.env` are correct; verify the app was granted `Sites.Read.All` permission with admin consent
 - **"Failed to resolve SharePoint share link"** — Verify the SharePoint site and file still exist; check that the Graph API can access them
 - **"Failed to download file from SharePoint"** — Network or permission issue; try running the script again
-- **"Sheet 'Daily Total Sales' not found"** — Verify the Excel file has a sheet named "Daily Total Sales"
+- **"Sheet 'invoice_transactions' not found"** — Verify the Excel file has a sheet named "invoice_transactions"
 
 ### Step 2: View the Dashboard
 

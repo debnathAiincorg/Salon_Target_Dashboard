@@ -20,8 +20,8 @@ AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
 AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
 AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
 
-# SharePoint share link
-SHAREPOINT_SHARE_LINK = "https://cloudaiorg.sharepoint.com/:x:/r/sites/Accounts2/_layouts/15/Doc.aspx?sourcedoc=%7B11D86568-2055-430C-BC22-014479DF6ACD%7D&file=Daily_Invoice.xlsx&fromShare=true&action=default&mobileredirect=true"
+# SharePoint configuration
+SHAREPOINT_SHARE_LINK = os.getenv("SHAREPOINT_SHARE_LINK")
 
 def get_access_token():
     """Authenticate via Azure AD client credentials flow and return access token."""
@@ -87,6 +87,13 @@ def download_file_from_sharepoint(access_token, drive_item):
 
 def fetch_excel_from_sharepoint():
     """Fetch Daily_Invoice.xlsx from SharePoint via Graph API and return openpyxl Workbook."""
+    # Validate configuration
+    if not SHAREPOINT_SHARE_LINK:
+        raise ValueError(
+            "SharePoint share link not configured. "
+            "Please set SHAREPOINT_SHARE_LINK in .env"
+        )
+
     # Step 1: Authenticate
     access_token = get_access_token()
 
