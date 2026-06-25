@@ -1,10 +1,10 @@
 {
-  "current_date_label": "24 June",
-  "current_week_sales": 5390,
-  "current_week_balance": 9610,
-  "remaining_days": 5,
+  "current_date_label": "25 June",
+  "current_week_sales": 10299,
+  "current_week_balance": 4701,
+  "remaining_days": 4,
   "previous_week_sales": 8616,
-  "monthly_sales": 34852,
+  "monthly_sales": 39761,
   "daily_chart_data": [
     {
       "date": "June 1",
@@ -97,6 +97,10 @@
     {
       "date": "June 23",
       "daily_sales": 990
+    },
+    {
+      "date": "June 24",
+      "daily_sales": 4909
     }
   ]
 }
