@@ -3,6 +3,7 @@ import json
 import base64
 import io
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from pathlib import Path
 import openpyxl
 import requests
@@ -224,7 +225,7 @@ def get_current_month_sales(daily_records):
     Returns:
         Filtered list, sorted by date ascending
     """
-    today = datetime.now().date()
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
     current_month = [
         record for record in daily_records
         if record["date"].year == today.year and record["date"].month == today.month
@@ -247,7 +248,7 @@ def compute_kpi_metrics(daily_records, weekly_summary):
         - previous_week_sales: float
         - monthly_sales: float
     """
-    today = datetime.now().date()
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
 
     # 1. Current Date Label
     current_date_label = f"{today.day} {today.strftime('%B')}"
