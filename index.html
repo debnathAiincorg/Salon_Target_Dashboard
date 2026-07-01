@@ -225,6 +225,12 @@
          * Render bar chart.
          */
         function renderChart(data) {
+            // Destroy existing chart if it exists, so stale data never lingers on screen
+            if (dashboardChart) {
+                dashboardChart.destroy();
+                dashboardChart = null;
+            }
+
             if (!data || !data.daily_chart_data || data.daily_chart_data.length === 0) {
                 console.log('No chart data to render');
                 return;
@@ -239,11 +245,6 @@
             // Calculate Y-axis max with 10% padding
             const maxSales = Math.max(...sales);
             const yAxisMax = Math.ceil((maxSales * 1.1) / 2000) * 2000;
-
-            // Destroy existing chart if it exists
-            if (dashboardChart) {
-                dashboardChart.destroy();
-            }
 
             // Create new chart
             dashboardChart = new Chart(ctx, {

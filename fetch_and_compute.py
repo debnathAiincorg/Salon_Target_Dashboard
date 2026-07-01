@@ -217,7 +217,9 @@ def compute_weekly_summary(daily_records):
     return weeks
 
 def get_current_month_sales(daily_records):
-    """Filter daily records to current month only.
+    """Filter daily records to current month only, falling back to the most
+    recent month with data if the current month has no records yet (e.g. on
+    the first day(s) of a new month before any invoices are entered).
 
     Args:
         daily_records: List of dicts with 'date' and 'daily_sales'
@@ -230,7 +232,14 @@ def get_current_month_sales(daily_records):
         record for record in daily_records
         if record["date"].year == today.year and record["date"].month == today.month
     ]
-    return current_month
+    if current_month or not daily_records:
+        return current_month
+
+    last_date = daily_records[-1]["date"]
+    return [
+        record for record in daily_records
+        if record["date"].year == last_date.year and record["date"].month == last_date.month
+    ]
 
 def compute_kpi_metrics(daily_records, weekly_summary):
     """Compute all KPI metrics for the dashboard.
