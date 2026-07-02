@@ -67,7 +67,7 @@
         }
 
         .kpi-label {
-            font-size: 18px;
+            font-size: 22px;
             color: #666;
             font-weight: 700;
             line-height: 1.4;
@@ -117,7 +117,7 @@
             }
 
             .kpi-label {
-                font-size: 16px;
+                font-size: 18px;
             }
 
             .chart-container {
@@ -290,6 +290,11 @@
                                 display: true,
                                 text: 'date'
                             },
+                            ticks: {
+                                font: {
+                                    size: 14,
+                                }
+                            },
                             grid: {
                                 display: false,
                             }
@@ -307,7 +312,7 @@
                             color: '#f17777',
                             font: {
                                 weight: 'bold',
-                                size: 16,
+                                size: 20,
                             },
                             formatter: function(value) {
                                 return value.toLocaleString('en-US');
