@@ -1,10 +1,10 @@
 {
-  "current_date_label": "5 July",
-  "current_week_sales": 8439,
-  "current_week_balance": 6561,
-  "remaining_days": 1,
+  "current_date_label": "6 July",
+  "current_week_sales": 11977,
+  "current_week_balance": 3023,
+  "remaining_days": 7,
   "previous_week_sales": 13528,
-  "monthly_sales": 4739,
+  "monthly_sales": 8277,
   "daily_chart_data": [
     {
       "date": "July 1",
@@ -17,6 +17,14 @@
     {
       "date": "July 3",
       "daily_sales": 420
+    },
+    {
+      "date": "July 4",
+      "daily_sales": 2288
+    },
+    {
+      "date": "July 5",
+      "daily_sales": 1250
     }
   ]
 }
