@@ -1,10 +1,10 @@
 {
   "current_date_label": "6 July",
-  "current_week_sales": 11977,
-  "current_week_balance": 3023,
+  "current_week_sales": 14485,
+  "current_week_balance": 515,
   "remaining_days": 7,
   "previous_week_sales": 13528,
-  "monthly_sales": 8277,
+  "monthly_sales": 10785,
   "daily_chart_data": [
     {
       "date": "July 1",
@@ -20,11 +20,11 @@
     },
     {
       "date": "July 4",
-      "daily_sales": 2288
+      "daily_sales": 4636
     },
     {
       "date": "July 5",
-      "daily_sales": 1250
+      "daily_sales": 1410
     }
   ]
 }
