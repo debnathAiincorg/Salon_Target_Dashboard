@@ -1,9 +1,18 @@
 {
-  "current_date_label": "2 August",
-  "current_week_sales": 11918,
-  "current_week_balance": 3082,
-  "remaining_days": 1,
+  "current_date_label": "3 August",
+  "current_week_sales": 17198,
+  "current_week_balance": 0,
+  "remaining_days": 7,
   "previous_week_sales": 8259,
-  "monthly_sales": 0,
-  "daily_chart_data": []
+  "monthly_sales": 5280,
+  "daily_chart_data": [
+    {
+      "date": "August 1",
+      "daily_sales": 2020
+    },
+    {
+      "date": "August 2",
+      "daily_sales": 3260
+    }
+  ]
 }
