@@ -1,10 +1,10 @@
 {
-  "current_date_label": "3 August",
-  "current_week_sales": 17198,
-  "current_week_balance": 0,
-  "remaining_days": 7,
-  "previous_week_sales": 8259,
-  "monthly_sales": 5280,
+  "current_date_label": "4 August",
+  "current_week_sales": 690,
+  "current_week_balance": 14310,
+  "remaining_days": 6,
+  "previous_week_sales": 17198,
+  "monthly_sales": 5970,
   "daily_chart_data": [
     {
       "date": "August 1",
@@ -13,6 +13,10 @@
     {
       "date": "August 2",
       "daily_sales": 3260
+    },
+    {
+      "date": "August 3",
+      "daily_sales": 690
     }
   ]
 }
