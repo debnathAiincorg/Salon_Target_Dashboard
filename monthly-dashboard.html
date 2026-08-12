@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Sales Dashboard</title>
+
+    <!-- Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <!-- Chart.js Data Labels Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+            background-color: #fff;
+            padding: 24px;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 16px;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        /* Top Bar: last-updated (left) + nav (right) */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .nav-bar {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-link {
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            text-decoration: none;
+            color: #666;
+            background-color: #f7f7f7;
+        }
+
+        .nav-link.active {
+            color: #fff;
+            background-color: #1ca0f2;
+        }
+
+        .last-updated {
+            font-size: 13px;
+            color: #888;
+        }
+
+        /* KPI Cards Row */
+        .kpi-cards {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .kpi-card {
+            flex: 1;
+            min-width: 200px;
+            background-color: #f7f7f7;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 130px;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #000;
+            line-height: 1.2;
+            margin-bottom: 8px;
+        }
+
+        .kpi-label {
+            font-size: 22px;
+            color: #666;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+
+        /* Chart Card */
+        .chart-card {
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 320px;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 280px;
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .kpi-cards {
+                gap: 12px;
+            }
+
+            .kpi-card {
+                min-width: 150px;
+                padding: 12px;
+                min-height: 110px;
+            }
+
+            .kpi-value {
+                font-size: 24px;
+                margin-bottom: 6px;
+            }
+
+            .kpi-label {
+                font-size: 18px;
+            }
+
+            .chart-container {
+                height: 240px;
+            }
+
+            .nav-link {
+                padding: 6px 14px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <div class="last-updated" id="last-updated">Last updated: -</div>
+            <nav class="nav-bar">
+                <a href="daily-dashboard.html" class="nav-link">Daily</a>
+                <a href="monthly-dashboard.html" class="nav-link active">Monthly</a>
+            </nav>
+        </div>
+        <h1>Salon Dashboard</h1>
+
+        <!-- KPI Cards Section -->
+        <div class="kpi-cards">
+            <div class="kpi-card">
+                <div class="kpi-value" id="year-label">-</div>
+                <div class="kpi-label">Year</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="current-month-sales">-</div>
+                <div class="kpi-label">Current Month Sales</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="previous-month-sales">-</div>
+                <div class="kpi-label">Previous Month Sales</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="year-total-sales">-</div>
+                <div class="kpi-label">Year Total Sales</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="average-monthly-sales">-</div>
+                <div class="kpi-label">Average Monthly Sales</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="highest-month-sales">-</div>
+                <div class="kpi-label" id="highest-month-label">Highest Month</div>
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="chart-card">
+            <div class="chart-title">Sum of total_sales by month</div>
+            <div class="chart-container">
+                <canvas id="monthly-sales-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const AUTO_REFRESH_INTERVAL_MS = 30000;  // 30 seconds
+        const CHART_DATA_URL = "monthly-dashboard-data.json";
+
+        let dashboardChart = null;
+        let lastDataString = null;  // For change detection
+
+        /**
+         * Format a number with thousands separators.
+         * Example: 17629 -> "17,629"
+         */
+        function formatNumber(num) {
+            if (typeof num !== 'number') {
+                return String(num);
+            }
+            return Math.floor(num).toLocaleString('en-US');
+        }
+
+        /**
+         * Pick a "nice" gridline step size (1/2/5 x10^n) so roughly 5-6
+         * gridlines are shown, regardless of how large monthly totals get.
+         */
+        function computeNiceStepSize(maxValue) {
+            if (maxValue <= 0) {
+                return 2000;
+            }
+            const roughStep = maxValue / 5;
+            const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+            const residual = roughStep / magnitude;
+            let niceResidual;
+            if (residual > 5) {
+                niceResidual = 10;
+            } else if (residual > 2) {
+                niceResidual = 5;
+            } else if (residual > 1) {
+                niceResidual = 2;
+            } else {
+                niceResidual = 1;
+            }
+            return niceResidual * magnitude;
+        }
+
+        /**
+         * Fetch dashboard data from JSON file with cache-busting.
+         */
+        async function loadDashboardData() {
+            try {
+                const url = `${CHART_DATA_URL}?t=${Date.now()}`;
+                const response = await fetch(url, { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Render KPI cards with data.
+         */
+        function renderKPICards(data) {
+            if (!data || !data.monthly_chart_data || data.monthly_chart_data.length === 0) {
+                console.log('No data to render');
+                return;
+            }
+
+            const months = data.monthly_chart_data;
+            const currentMonthEntry = months[months.length - 1];
+            const previousMonthEntry = months.length >= 2 ? months[months.length - 2] : null;
+
+            const yearTotalSales = months.reduce((sum, m) => sum + m.total_sales, 0);
+            const averageMonthlySales = yearTotalSales / months.length;
+
+            const highestMonthEntry = months.reduce(
+                (max, m) => (m.total_sales > max.total_sales ? m : max),
+                months[0]
+            );
+
+            document.getElementById('year-label').textContent = data.year != null ? String(data.year) : '-';
+            document.getElementById('current-month-sales').textContent = formatNumber(currentMonthEntry.total_sales);
+            document.getElementById('previous-month-sales').textContent = formatNumber(previousMonthEntry ? previousMonthEntry.total_sales : 0);
+            document.getElementById('year-total-sales').textContent = formatNumber(yearTotalSales);
+            document.getElementById('average-monthly-sales').textContent = formatNumber(averageMonthlySales);
+            document.getElementById('highest-month-sales').textContent = formatNumber(highestMonthEntry.total_sales);
+            document.getElementById('highest-month-label').textContent = `Highest Month (${highestMonthEntry.month})`;
+            document.getElementById('last-updated').textContent = data.last_updated ? `Last updated: ${data.last_updated}` : 'Last updated: -';
+        }
+
+        /**
+         * Render bar chart.
+         */
+        function renderChart(data) {
+            // Destroy existing chart if it exists, so stale data never lingers on screen
+            if (dashboardChart) {
+                dashboardChart.destroy();
+                dashboardChart = null;
+            }
+
+            if (!data || !data.monthly_chart_data || data.monthly_chart_data.length === 0) {
+                console.log('No chart data to render');
+                return;
+            }
+
+            const chartCanvas = document.getElementById('monthly-sales-chart');
+            const ctx = chartCanvas.getContext('2d');
+
+            const months = data.monthly_chart_data.map(m => m.month);
+            const sales = data.monthly_chart_data.map(m => m.total_sales);
+
+            // Calculate Y-axis max with 10% padding, using a step size scaled to the data
+            const maxSales = Math.max(...sales);
+            const stepSize = computeNiceStepSize(maxSales * 1.1);
+            const yAxisMax = Math.ceil((maxSales * 1.1) / stepSize) * stepSize;
+
+            // Create new chart
+            dashboardChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Sum of total_sales',
+                            data: sales,
+                            backgroundColor: '#1ca0f2',
+                            borderColor: '#1ca0f2',
+                            borderWidth: 0,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'x',
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: yAxisMax,
+                            ticks: {
+                                stepSize: stepSize,
+                                callback: function(value) {
+                                    return value.toLocaleString('en-US');
+                                }
+                            },
+                            grid: {
+                                drawBorder: true,
+                                color: 'rgba(0, 0, 0, 0.1)',
+                                lineWidth: 1,
+                            },
+                            title: {
+                                display: true,
+                                text: 'Sum of total_sales'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'month'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 14,
+                                }
+                            },
+                            grid: {
+                                display: false,
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        datalabels: {
+                            display: true,
+                            anchor: 'end',
+                            align: 'end',
+                            offset: 5,
+                            color: '#f17777',
+                            font: {
+                                weight: 'bold',
+                                size: 20,
+                            },
+                            formatter: function(value) {
+                                return value.toLocaleString('en-US');
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+
+        /**
+         * Main render function: update KPI cards and chart.
+         */
+        function render(data) {
+            renderKPICards(data);
+            renderChart(data);
+        }
+
+        /**
+         * Initialize the dashboard and set up auto-refresh.
+         */
+        async function init() {
+            console.log('Initializing monthly dashboard...');
+
+            // Initial load
+            const data = await loadDashboardData();
+            if (data) {
+                render(data);
+                lastDataString = JSON.stringify(data);
+            }
+
+            // Set up auto-refresh
+            setInterval(async () => {
+                const freshData = await loadDashboardData();
+                if (freshData) {
+                    const freshDataString = JSON.stringify(freshData);
+                    if (freshDataString !== lastDataString) {
+                        console.log('Dashboard data changed, updating...');
+                        render(freshData);
+                        lastDataString = freshDataString;
+                    }
+                }
+            }, AUTO_REFRESH_INTERVAL_MS);
+        }
+
+        // Start when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>

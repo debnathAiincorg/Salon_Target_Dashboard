@@ -1,0 +1,51 @@
+{
+  "current_date_label": "12 August",
+  "current_week_sales": 429,
+  "current_week_balance": 14571,
+  "remaining_days": 5,
+  "previous_week_sales": 20646,
+  "monthly_sales": 26355,
+  "daily_chart_data": [
+    {
+      "date": "August 1",
+      "daily_sales": 2020
+    },
+    {
+      "date": "August 2",
+      "daily_sales": 3260
+    },
+    {
+      "date": "August 3",
+      "daily_sales": 690
+    },
+    {
+      "date": "August 4",
+      "daily_sales": 2669
+    },
+    {
+      "date": "August 5",
+      "daily_sales": 1828
+    },
+    {
+      "date": "August 6",
+      "daily_sales": 4760
+    },
+    {
+      "date": "August 7",
+      "daily_sales": 4229
+    },
+    {
+      "date": "August 8",
+      "daily_sales": 4690
+    },
+    {
+      "date": "August 9",
+      "daily_sales": 1780
+    },
+    {
+      "date": "August 10",
+      "daily_sales": 429
+    }
+  ],
+  "last_updated": "12 August 2026, 11:56 AM IST"
+}

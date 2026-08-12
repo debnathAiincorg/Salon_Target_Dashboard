@@ -25,22 +25,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install openpyxl requests
 
-      - name: Fetch and compute dashboard data
+      - name: Fetch and compute daily dashboard data
         env:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           SHAREPOINT_SHARE_LINK: ${{ secrets.SHAREPOINT_SHARE_LINK }}
-        run: python fetch_and_compute.py
+        run: python fetch_daily_data.py
 
-      - name: Commit and push if dashboard-data.json changed
+      - name: Fetch and compute monthly dashboard data
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          SHAREPOINT_SHARE_LINK: ${{ secrets.SHAREPOINT_SHARE_LINK }}
+        run: python fetch_monthly_data.py
+
+      - name: Commit and push if dashboard data changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dashboard-data.json
+          git add daily-dashboard-data.json monthly-dashboard-data.json
           if git diff --cached --quiet; then
-            echo "No changes to dashboard-data.json, skipping commit"
+            echo "No changes to dashboard data, skipping commit"
           else
-            git commit -m "chore: update dashboard-data.json via GitHub Actions"
+            git commit -m "chore: update dashboard data via GitHub Actions"
             git push origin main
           fi

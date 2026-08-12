@@ -1,0 +1,38 @@
+{
+  "year": 2026,
+  "monthly_chart_data": [
+    {
+      "month": "January",
+      "total_sales": 80999
+    },
+    {
+      "month": "February",
+      "total_sales": 66955
+    },
+    {
+      "month": "March",
+      "total_sales": 63598
+    },
+    {
+      "month": "April",
+      "total_sales": 50719
+    },
+    {
+      "month": "May",
+      "total_sales": 83828
+    },
+    {
+      "month": "June",
+      "total_sales": 46690
+    },
+    {
+      "month": "July",
+      "total_sales": 55199
+    },
+    {
+      "month": "August",
+      "total_sales": 26355
+    }
+  ],
+  "last_updated": "12 August 2026, 11:56 AM IST"
+}

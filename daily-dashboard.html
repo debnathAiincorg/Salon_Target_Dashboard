@@ -38,6 +38,41 @@
             text-align: center;
         }
 
+        /* Top Bar: last-updated (left) + nav (right) */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .nav-bar {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-link {
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            text-decoration: none;
+            color: #666;
+            background-color: #f7f7f7;
+        }
+
+        .nav-link.active {
+            color: #fff;
+            background-color: #1ca0f2;
+        }
+
+        .last-updated {
+            font-size: 13px;
+            color: #888;
+        }
+
         /* KPI Cards Row */
         .kpi-cards {
             display: flex;
@@ -123,11 +158,23 @@
             .chart-container {
                 height: 240px;
             }
+
+            .nav-link {
+                padding: 6px 14px;
+                font-size: 14px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="top-bar">
+            <div class="last-updated" id="last-updated">Last updated: -</div>
+            <nav class="nav-bar">
+                <a href="daily-dashboard.html" class="nav-link active">Daily</a>
+                <a href="monthly-dashboard.html" class="nav-link">Monthly</a>
+            </nav>
+        </div>
         <h1>Salon Dashboard</h1>
 
         <!-- KPI Cards Section -->
@@ -170,7 +217,7 @@
     <script>
         // Constants
         const AUTO_REFRESH_INTERVAL_MS = 30000;  // 30 seconds
-        const CHART_DATA_URL = "dashboard-data.json";
+        const CHART_DATA_URL = "daily-dashboard-data.json";
 
         let dashboardChart = null;
         let lastDataString = null;  // For change detection
@@ -219,6 +266,7 @@
             document.getElementById('remaining-days').textContent = formatNumber(data.remaining_days);
             document.getElementById('previous-week-sales').textContent = formatNumber(data.previous_week_sales);
             document.getElementById('monthly-sales').textContent = formatNumber(data.monthly_sales);
+            document.getElementById('last-updated').textContent = data.last_updated ? `Last updated: ${data.last_updated}` : 'Last updated: -';
         }
 
         /**

@@ -6,10 +6,13 @@ A full-stack sales dashboard that reads live data from SharePoint via Microsoft 
 
 ```
 d:\Salon Target Dashboard\
-├── fetch_and_compute.py          Backend script: reads Excel, computes metrics, writes JSON
-├── index.html                    Frontend dashboard: reads JSON, renders KPI cards and chart
-├── dashboard-data.json           Generated output (created by fetch_and_compute.py)
-├── .env.example                  Example environment variable settings
+├── fetch_daily_data.py            Backend script: reads Excel, computes daily/weekly metrics, writes JSON
+├── daily-dashboard.html           Frontend dashboard: reads daily-dashboard-data.json, renders KPI cards and chart
+├── daily-dashboard-data.json      Generated output (created by fetch_daily_data.py)
+├── fetch_monthly_data.py          Backend script: reads Excel, computes month-by-month totals for the current year, writes JSON
+├── monthly-dashboard.html         Frontend dashboard: reads monthly-dashboard-data.json, renders KPI cards and chart
+├── monthly-dashboard-data.json    Generated output (created by fetch_monthly_data.py)
+├── .env.example                   Example environment variable settings
 └── docs/superpowers/
     ├── specs/2026-06-24-sales-dashboard-design.md
     └── plans/2026-06-24-sales-dashboard-implementation.md
@@ -59,7 +62,7 @@ The dashboard fetches `Daily_Invoice.xlsx` from SharePoint using Microsoft Graph
 
 ### 4. Create `.env` File
 
-1. In the project root (same directory as `fetch_and_compute.py`), create a file named `.env` (not `.env.example`)
+1. In the project root (same directory as `fetch_daily_data.py`), create a file named `.env` (not `.env.example`)
 2. Add your Azure credentials and SharePoint configuration:
    ```
    AZURE_TENANT_ID=<your-tenant-id>
@@ -86,7 +89,7 @@ pip install openpyxl requests python-dotenv
 Run the backend script to fetch the Excel file from SharePoint, compute KPI metrics, and generate the dashboard JSON:
 
 ```bash
-python fetch_and_compute.py
+python fetch_daily_data.py
 ```
 
 Expected output:
@@ -99,7 +102,7 @@ Computed 8 weekly summaries
 Current Date: 23 June
 Current Week Sales: 17629
 Monthly Sales: 69849
-Dashboard data written to dashboard-data.json
+Dashboard data written to daily-dashboard-data.json
 SUCCESS: Dashboard data computed and written
 ```
 
@@ -113,15 +116,15 @@ If you see errors:
 
 ### Step 2: View the Dashboard
 
-Open `index.html` in a web browser:
+Open `daily-dashboard.html` in a web browser:
 
-**Option A:** Double-click `index.html` in File Explorer
+**Option A:** Double-click `daily-dashboard.html` in File Explorer
 **Option B:** Use a simple HTTP server (recommended to avoid browser cache issues):
 ```bash
 # Python 3
 python -m http.server 8000
 
-# Then open: http://localhost:8000
+# Then open: http://localhost:8000/daily-dashboard.html
 ```
 
 Expected:
@@ -133,7 +136,7 @@ Expected:
 
 The dashboard auto-refreshes every 30 seconds. To see updated data:
 
-1. Run `python fetch_and_compute.py` again (e.g., after editing the Excel file locally)
+1. Run `python fetch_daily_data.py` again (e.g., after editing the Excel file locally)
 2. The browser will detect the new JSON and automatically update the display
 
 You don't need to manually refresh the page.
@@ -142,7 +145,7 @@ You don't need to manually refresh the page.
 
 ### Change the Auto-Refresh Interval
 
-Edit `index.html` and modify this line:
+Edit `daily-dashboard.html` and modify this line:
 
 ```javascript
 const AUTO_REFRESH_INTERVAL_MS = 30000;  // Change 30000 to your desired milliseconds
@@ -155,7 +158,7 @@ Examples:
 
 ### Change the Weekly Target
 
-Edit `fetch_and_compute.py` and modify this line:
+Edit `fetch_daily_data.py` and modify this line:
 
 ```python
 WEEKLY_TARGET = 15000  # Change 15000 to your desired target
@@ -188,34 +191,34 @@ The "Current Week Balance" will automatically recalculate based on the new targe
 2. **Aggregation:** Sum NET_AMOUNT for all rows sharing the same DATE to produce one `{date, daily_sales}` record per day
 3. **Weekly Buckets:** Group daily sales by week (Monday-Sunday)
 4. **Monthly Filter:** Keep only records from the current calendar month for chart display
-5. **Output:** Write computed metrics and chart data to `dashboard-data.json`
+5. **Output:** Write computed metrics and chart data to `daily-dashboard-data.json`
 
 ## Troubleshooting
 
 ### Dashboard shows "-" or "0" for all KPI values
 
-- Verify `dashboard-data.json` exists and is valid JSON
+- Verify `daily-dashboard-data.json` exists and is valid JSON
 - Check that the Excel file has data in the "Daily Total Sales" sheet (rows 4+, not just headers)
-- Run `python fetch_and_compute.py` again to regenerate the JSON
+- Run `python fetch_daily_data.py` again to regenerate the JSON
 
 ### Bar chart doesn't render
 
 - Check browser console for JavaScript errors (F12 → Console)
 - Verify Chart.js and the datalabels plugin loaded from CDN
-- Check that `daily_chart_data` in dashboard-data.json is not empty
+- Check that `daily_chart_data` in daily-dashboard-data.json is not empty
 - Try opening the HTML in a different browser
 
 ### Numbers don't match expectations
 
 - Manually verify the Excel file contains the correct daily sales amounts
 - Check that the "Daily Total Sales" sheet exists and data starts at row 4
-- Run `python fetch_and_compute.py` with verbose output to debug parsing
+- Run `python fetch_daily_data.py` with verbose output to debug parsing
 
 ### Auto-refresh not working
 
 - Check browser console for fetch errors
-- Verify `dashboard-data.json` is readable (try opening it directly in the browser)
-- Ensure `index.html` and `dashboard-data.json` are in the same directory
+- Verify `daily-dashboard-data.json` is readable (try opening it directly in the browser)
+- Ensure `daily-dashboard.html` and `daily-dashboard-data.json` are in the same directory
 
 ## Future Enhancements
 

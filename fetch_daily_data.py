@@ -18,7 +18,7 @@ except ImportError:
 
 # Constants
 WEEKLY_TARGET = 15000
-OUTPUT_FILE = "dashboard-data.json"
+OUTPUT_FILE = "daily-dashboard-data.json"
 
 # Azure AD configuration
 AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
@@ -289,6 +289,12 @@ def compute_kpi_metrics(daily_records, weekly_summary):
         "current_month_sales": current_month_sales,  # For chart data
     }
 
+def format_ist_timestamp():
+    """Return the current IST time formatted as 'D Month YYYY, H:MM AM/PM IST'."""
+    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    hour_12 = now_ist.strftime("%I").lstrip("0") or "12"
+    return f"{now_ist.day} {now_ist.strftime('%B %Y')}, {hour_12}:{now_ist.strftime('%M %p')} IST"
+
 def generate_chart_data(current_month_sales):
     """Generate chart data from current month sales records.
 
@@ -330,6 +336,7 @@ def write_dashboard_json(kpi, chart_data, output_file):
         "previous_week_sales": int(kpi["previous_week_sales"]),
         "monthly_sales": int(kpi["monthly_sales"]),
         "daily_chart_data": chart_data,
+        "last_updated": format_ist_timestamp(),
     }
 
     with open(output_file, 'w') as f:
