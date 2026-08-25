@@ -1,10 +1,10 @@
 {
   "current_date_label": "25 August",
-  "current_week_sales": 16348,
-  "current_week_balance": 0,
+  "current_week_sales": 400,
+  "current_week_balance": 14600,
   "remaining_days": 6,
-  "previous_week_sales": 10588,
-  "monthly_sales": 52862,
+  "previous_week_sales": 16348,
+  "monthly_sales": 53262,
   "daily_chart_data": [
     {
       "date": "August 1",
@@ -93,7 +93,11 @@
     {
       "date": "August 23",
       "daily_sales": 5500
+    },
+    {
+      "date": "August 24",
+      "daily_sales": 400
     }
   ],
-  "last_updated": "25 August 2026, 10:00 AM IST"
+  "last_updated": "25 August 2026, 2:00 PM IST"
 }
