@@ -1,8 +1,8 @@
 {
-  "current_date_label": "26 August",
+  "current_date_label": "27 August",
   "current_week_sales": 2549,
   "current_week_balance": 12451,
-  "remaining_days": 5,
+  "remaining_days": 4,
   "previous_week_sales": 16348,
   "monthly_sales": 55411,
   "daily_chart_data": [
@@ -107,5 +107,5 @@
       "daily_sales": 100
     }
   ],
-  "last_updated": "26 August 2026, 2:00 PM IST"
+  "last_updated": "27 August 2026, 10:00 AM IST"
 }
