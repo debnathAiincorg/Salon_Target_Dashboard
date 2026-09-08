@@ -1,10 +1,10 @@
 {
-  "current_date_label": "7 September",
-  "current_week_sales": 4508,
-  "current_week_balance": 10492,
-  "remaining_days": 7,
-  "previous_week_sales": 18118,
-  "monthly_sales": 4408,
+  "current_date_label": "8 September",
+  "current_week_sales": 859,
+  "current_week_balance": 14141,
+  "remaining_days": 6,
+  "previous_week_sales": 4508,
+  "monthly_sales": 5267,
   "daily_chart_data": [
     {
       "date": "September 1",
@@ -29,7 +29,11 @@
     {
       "date": "September 6",
       "daily_sales": 1180
+    },
+    {
+      "date": "September 7",
+      "daily_sales": 859
     }
   ],
-  "last_updated": "7 September 2026, 2:00 PM IST"
+  "last_updated": "8 September 2026, 10:00 AM IST"
 }
