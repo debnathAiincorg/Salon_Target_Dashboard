@@ -1,10 +1,10 @@
 {
   "current_date_label": "12 September",
-  "current_week_sales": 11606,
-  "current_week_balance": 3394,
+  "current_week_sales": 15084,
+  "current_week_balance": 0,
   "remaining_days": 2,
   "previous_week_sales": 4508,
-  "monthly_sales": 16014,
+  "monthly_sales": 19492,
   "daily_chart_data": [
     {
       "date": "September 1",
@@ -48,8 +48,8 @@
     },
     {
       "date": "September 11",
-      "daily_sales": 1450
+      "daily_sales": 4928
     }
   ],
-  "last_updated": "12 September 2026, 10:00 AM IST"
+  "last_updated": "12 September 2026, 2:00 PM IST"
 }
