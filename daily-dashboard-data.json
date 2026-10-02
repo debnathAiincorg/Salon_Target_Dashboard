@@ -1,10 +1,15 @@
 {
-  "current_date_label": "1 October",
-  "current_week_sales": 6639,
-  "current_week_balance": 8361,
-  "remaining_days": 4,
+  "current_date_label": "2 October",
+  "current_week_sales": 8828,
+  "current_week_balance": 6172,
+  "remaining_days": 3,
   "previous_week_sales": 17585,
-  "monthly_sales": 0,
-  "daily_chart_data": [],
-  "last_updated": "1 October 2026, 2:00 PM IST"
+  "monthly_sales": 2189,
+  "daily_chart_data": [
+    {
+      "date": "October 1",
+      "daily_sales": 2189
+    }
+  ],
+  "last_updated": "2 October 2026, 10:00 AM IST"
 }
