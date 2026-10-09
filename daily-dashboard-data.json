@@ -1,10 +1,10 @@
 {
-  "current_date_label": "8 October",
-  "current_week_sales": 11578,
-  "current_week_balance": 3422,
-  "remaining_days": 4,
+  "current_date_label": "9 October",
+  "current_week_sales": 12528,
+  "current_week_balance": 2472,
+  "remaining_days": 3,
   "previous_week_sales": 11998,
-  "monthly_sales": 16937,
+  "monthly_sales": 17887,
   "daily_chart_data": [
     {
       "date": "October 1",
@@ -33,7 +33,11 @@
     {
       "date": "October 7",
       "daily_sales": 6739
+    },
+    {
+      "date": "October 8",
+      "daily_sales": 950
     }
   ],
-  "last_updated": "8 October 2026, 2:00 PM IST"
+  "last_updated": "9 October 2026, 10:00 AM IST"
 }
