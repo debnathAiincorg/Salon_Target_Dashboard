@@ -1,10 +1,10 @@
 {
-  "current_date_label": "30 October",
-  "current_week_sales": 52702,
-  "current_week_balance": 0,
-  "remaining_days": 3,
-  "previous_week_sales": 56366,
-  "monthly_sales": 114427,
+  "current_date_label": "31 October",
+  "current_week_sales": 3030,
+  "current_week_balance": 11970,
+  "remaining_days": 2,
+  "previous_week_sales": 1550,
+  "monthly_sales": 143843,
   "daily_chart_data": [
     {
       "date": "October 1",
@@ -65,7 +65,47 @@
     {
       "date": "October 15",
       "daily_sales": 8526
+    },
+    {
+      "date": "October 16",
+      "daily_sales": 13038
+    },
+    {
+      "date": "October 17",
+      "daily_sales": 11148
+    },
+    {
+      "date": "October 18",
+      "daily_sales": 650
+    },
+    {
+      "date": "October 23",
+      "daily_sales": 1200
+    },
+    {
+      "date": "October 24",
+      "daily_sales": 350
+    },
+    {
+      "date": "October 26",
+      "daily_sales": 1490
+    },
+    {
+      "date": "October 27",
+      "daily_sales": 500
+    },
+    {
+      "date": "October 28",
+      "daily_sales": 40
+    },
+    {
+      "date": "October 29",
+      "daily_sales": 760
+    },
+    {
+      "date": "October 30",
+      "daily_sales": 240
     }
   ],
-  "last_updated": "30 October 2026, 2:00 PM IST"
+  "last_updated": "31 October 2026, 10:00 AM IST"
 }
