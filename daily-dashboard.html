@@ -38,10 +38,10 @@
             text-align: center;
         }
 
-        /* Top Bar: last-updated (left) + nav (right) */
+        /* Top Bar: nav (right) */
         .top-bar {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: center;
             flex-wrap: wrap;
             gap: 12px;
@@ -66,11 +66,6 @@
         .nav-link.active {
             color: #fff;
             background-color: #1ca0f2;
-        }
-
-        .last-updated {
-            font-size: 13px;
-            color: #888;
         }
 
         /* KPI Cards Row */
@@ -102,10 +97,11 @@
         }
 
         .kpi-label {
-            font-size: 22px;
+            font-size: 18px;
             color: #666;
             font-weight: 700;
             line-height: 1.4;
+            white-space: nowrap;
         }
 
         /* Chart Card */
@@ -152,7 +148,7 @@
             }
 
             .kpi-label {
-                font-size: 18px;
+                font-size: 13px;
             }
 
             .chart-container {
@@ -169,7 +165,6 @@
 <body>
     <div class="container">
         <div class="top-bar">
-            <div class="last-updated" id="last-updated">Last updated: -</div>
             <nav class="nav-bar">
                 <a href="daily-dashboard.html" class="nav-link active">Daily</a>
                 <a href="monthly-dashboard.html" class="nav-link">Monthly</a>
@@ -177,10 +172,6 @@
         </div>
         <!-- KPI Cards Section -->
         <div class="kpi-cards">
-            <div class="kpi-card">
-                <div class="kpi-value" id="current-date-label">-</div>
-                <div class="kpi-label">Current Date Label</div>
-            </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="current-week-sales">-</div>
                 <div class="kpi-label">Current Week Sales</div>
@@ -258,13 +249,11 @@
                 return;
             }
 
-            document.getElementById('current-date-label').textContent = data.current_date_label || '-';
             document.getElementById('current-week-sales').textContent = formatNumber(data.current_week_sales);
             document.getElementById('current-week-balance').textContent = formatNumber(data.current_week_balance);
             document.getElementById('remaining-days').textContent = formatNumber(data.remaining_days);
             document.getElementById('previous-week-sales').textContent = formatNumber(data.previous_week_sales);
             document.getElementById('monthly-sales').textContent = formatNumber(data.monthly_sales);
-            document.getElementById('last-updated').textContent = data.last_updated ? `Last updated: ${data.last_updated}` : 'Last updated: -';
         }
 
         /**
@@ -332,9 +321,7 @@
                         },
                         x: {
                             ticks: {
-                                font: {
-                                    size: 14,
-                                }
+                                display: false
                             },
                             grid: {
                                 display: false,
