@@ -40,7 +40,11 @@
     {
       "month": "October",
       "total_sales": 143843
+    },
+    {
+      "month": "November",
+      "total_sales": 0
     }
   ],
-  "last_updated": "31 October 2026, 6:20 PM IST"
+  "last_updated": "1 November 2026, 10:00 AM IST"
 }
