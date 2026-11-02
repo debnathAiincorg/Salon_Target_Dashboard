@@ -18,6 +18,7 @@ except ImportError:
 
 # Constants
 WEEKLY_TARGET = 15000
+WEEKS_IN_CHART = 6
 OUTPUT_FILE = "daily-dashboard-data.json"
 
 # Azure AD configuration
@@ -320,12 +321,43 @@ def generate_chart_data(current_month_sales):
 
     return chart_data
 
-def write_dashboard_json(kpi, chart_data, output_file):
+def generate_weekly_chart_data(weekly_summary):
+    """Generate weekly chart data for the last WEEKS_IN_CHART weeks.
+
+    Covers Monday-to-Sunday weeks ending with the current week. Weeks with
+    no sales are included with 0 so the chart has no gaps.
+
+    Args:
+        weekly_summary: Dict keyed by week_start_date
+
+    Returns:
+        List of dicts with 'week' (e.g., "26 Oct - 1 Nov") and 'weekly_sales' (int),
+        oldest week first
+    """
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    current_week_start = today - timedelta(days=today.weekday())
+
+    chart_data = []
+    for i in range(WEEKS_IN_CHART - 1, -1, -1):
+        week_start = current_week_start - timedelta(weeks=i)
+        week_end = week_start + timedelta(days=6)
+        week = weekly_summary.get(week_start)
+        label = f"{week_start.day} {week_start.strftime('%b')} - {week_end.day} {week_end.strftime('%b')}"
+
+        chart_data.append({
+            "week": label,
+            "weekly_sales": int(week["total_sales"]) if week else 0
+        })
+
+    return chart_data
+
+def write_dashboard_json(kpi, chart_data, weekly_chart_data, output_file):
     """Write dashboard data to JSON file.
 
     Args:
         kpi: Dict with KPI metrics (current_date_label, current_week_sales, etc.)
         chart_data: List of dicts with chart data
+        weekly_chart_data: List of dicts with weekly chart data
         output_file: Path to output JSON file
     """
     dashboard_data = {
@@ -336,6 +368,8 @@ def write_dashboard_json(kpi, chart_data, output_file):
         "previous_week_sales": int(kpi["previous_week_sales"]),
         "monthly_sales": int(kpi["monthly_sales"]),
         "daily_chart_data": chart_data,
+        "weekly_chart_data": weekly_chart_data,
+        "weekly_target": WEEKLY_TARGET,
         "last_updated": format_ist_timestamp(),
     }
 
@@ -381,9 +415,10 @@ def main():
 
         # Step 6: Generate chart data
         chart_data = generate_chart_data(kpi["current_month_sales"])
+        weekly_chart_data = generate_weekly_chart_data(weekly_summary)
 
         # Step 7: Write output JSON
-        write_dashboard_json(kpi, chart_data, OUTPUT_FILE)
+        write_dashboard_json(kpi, chart_data, weekly_chart_data, OUTPUT_FILE)
 
         print("SUCCESS: Dashboard data computed and written")
 

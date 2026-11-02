@@ -17,35 +17,31 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            height: 100%;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
             background-color: #fff;
-            padding: 24px;
+            padding: 16px 24px;
             font-size: 16px;
         }
 
+        /* Full-screen layout: nav, KPI row, weekly chart, daily chart */
         .container {
             max-width: 1400px;
+            height: 100%;
             margin: 0 auto;
-        }
-
-        h1 {
-            font-size: 28px;
-            font-weight: 700;
-            color: #000;
-            margin-bottom: 16px;
-            line-height: 1.2;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         /* Top Bar: nav (right) */
         .top-bar {
             display: flex;
             justify-content: flex-end;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 16px;
         }
 
         .nav-bar {
@@ -54,9 +50,9 @@
         }
 
         .nav-link {
-            padding: 8px 20px;
+            padding: 6px 18px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             text-decoration: none;
             color: #666;
@@ -70,89 +66,118 @@
 
         /* KPI Cards Row */
         .kpi-cards {
-            display: flex;
-            gap: 16px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
         }
 
         .kpi-card {
-            flex: 1;
-            min-width: 200px;
+            min-width: 0;
             background-color: #f7f7f7;
             border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 130px;
+            padding: 10px 14px;
         }
 
         .kpi-value {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             color: #000;
             line-height: 1.2;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
         .kpi-label {
-            font-size: 18px;
+            font-size: 16px;
             color: #666;
             font-weight: 700;
-            line-height: 1.4;
+            line-height: 1.3;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        /* Chart Card */
+        /* Chart Cards share the remaining screen height equally */
         .chart-card {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
             background-color: #fff;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            padding: 16px;
-            min-height: 320px;
+            padding: 12px 16px;
         }
 
         .chart-title {
             font-size: 14px;
             color: #333;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             font-weight: 500;
         }
 
         .chart-container {
             position: relative;
+            flex: 1;
+            min-height: 0;
             width: 100%;
-            height: 280px;
         }
 
         canvas {
             max-width: 100%;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .kpi-cards {
-                gap: 12px;
-            }
-
-            .kpi-card {
-                min-width: 150px;
-                padding: 12px;
-                min-height: 110px;
-            }
-
+        /* Tablet: smaller KPI text so labels stay on one line */
+        @media (max-width: 1100px) {
             .kpi-value {
-                font-size: 24px;
-                margin-bottom: 6px;
+                font-size: 22px;
             }
 
             .kpi-label {
                 font-size: 13px;
             }
+        }
+
+        /* Phone, or a very short window: normal page flow with fixed chart heights */
+        @media (max-width: 768px), (max-height: 560px) {
+            html, body {
+                height: auto;
+            }
+
+            body {
+                padding: 16px;
+            }
+
+            .container {
+                height: auto;
+            }
+
+            .chart-card {
+                flex: none;
+            }
 
             .chart-container {
+                flex: none;
                 height: 240px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .kpi-cards {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            /* Odd card out fills the last row */
+            .kpi-card:last-child {
+                grid-column: span 2;
+            }
+
+            .kpi-value {
+                font-size: 22px;
+            }
+
+            .kpi-label {
+                font-size: 13px;
             }
 
             .nav-link {
@@ -170,6 +195,7 @@
                 <a href="monthly-dashboard.html" class="nav-link">Monthly</a>
             </nav>
         </div>
+
         <!-- KPI Cards Section -->
         <div class="kpi-cards">
             <div class="kpi-card">
@@ -194,7 +220,15 @@
             </div>
         </div>
 
-        <!-- Chart Section -->
+        <!-- Weekly Chart Section -->
+        <div class="chart-card">
+            <div class="chart-title" id="weekly-chart-title">Weekly Sales</div>
+            <div class="chart-container">
+                <canvas id="weekly-sales-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Daily Chart Section -->
         <div class="chart-card">
             <div class="chart-title" id="chart-title">-</div>
             <div class="chart-container">
@@ -207,8 +241,11 @@
         // Constants
         const AUTO_REFRESH_INTERVAL_MS = 30000;  // 30 seconds
         const CHART_DATA_URL = "daily-dashboard-data.json";
+        const BAR_COLOR = '#1ca0f2';
+        const LABEL_COLOR = '#f17777';
 
-        let dashboardChart = null;
+        let dailyChart = null;
+        let weeklyChart = null;
         let lastDataString = null;  // For change detection
 
         /**
@@ -257,44 +294,30 @@
         }
 
         /**
-         * Render bar chart.
+         * Horizontal space available per bar, in pixels.
          */
-        function renderChart(data) {
-            // Destroy existing chart if it exists, so stale data never lingers on screen
-            if (dashboardChart) {
-                dashboardChart.destroy();
-                dashboardChart = null;
-            }
+        function barWidth(chart) {
+            return chart.chartArea ? chart.chartArea.width / chart.data.labels.length : chart.width;
+        }
 
-            if (!data || !data.daily_chart_data || data.daily_chart_data.length === 0) {
-                console.log('No chart data to render');
-                return;
-            }
+        /**
+         * Create a bar chart with value labels above each bar.
+         * extraDatasets are drawn on top of the bars (e.g. a target line).
+         */
+        function createBarChart(canvasId, labels, values, { showXLabels, suggestedMax, extraDatasets = [] }) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
 
-            const chartCanvas = document.getElementById('daily-sales-chart');
-            const ctx = chartCanvas.getContext('2d');
-
-            const dates = data.daily_chart_data.map(d => d.date);
-            const sales = data.daily_chart_data.map(d => d.daily_sales);
-
-            // Chart title is the month of the data, e.g. "August 1" -> "August"
-            document.getElementById('chart-title').textContent = dates[0].split(' ')[0];
-
-            // Calculate Y-axis max with 10% padding
-            const maxSales = Math.max(...sales);
-            const yAxisMax = Math.ceil((maxSales * 1.1) / 2000) * 2000;
-
-            // Create new chart
-            dashboardChart = new Chart(ctx, {
+            return new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: dates,
+                    labels: labels,
                     datasets: [
+                        ...extraDatasets,
                         {
                             label: 'Sales',
-                            data: sales,
-                            backgroundColor: '#1ca0f2',
-                            borderColor: '#1ca0f2',
+                            data: values,
+                            backgroundColor: BAR_COLOR,
+                            borderColor: BAR_COLOR,
                             borderWidth: 0,
                         }
                     ]
@@ -303,12 +326,18 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     indexAxis: 'x',
+                    layout: {
+                        // Room for the value labels above the tallest bar
+                        padding: { top: 24 }
+                    },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: yAxisMax,
+                            suggestedMax: suggestedMax,
+                            // 10% headroom so the tallest bar never touches the top
+                            grace: '10%',
                             ticks: {
-                                stepSize: 2000,
+                                maxTicksLimit: 5,
                                 callback: function(value) {
                                     return value.toLocaleString('en-US');
                                 }
@@ -321,7 +350,12 @@
                         },
                         x: {
                             ticks: {
-                                display: false
+                                display: showXLabels,
+                                maxRotation: 0,
+                                autoSkip: false,
+                                font: function(context) {
+                                    return { size: barWidth(context.chart) < 60 ? 10 : 12 };
+                                }
                             },
                             grid: {
                                 display: false,
@@ -336,11 +370,18 @@
                             display: true,
                             anchor: 'end',
                             align: 'end',
-                            offset: 5,
-                            color: '#f17777',
-                            font: {
-                                weight: 'bold',
-                                size: 20,
+                            offset: 2,
+                            color: LABEL_COLOR,
+                            // Shrink labels on narrow charts; turn them vertical when bars are thin
+                            rotation: function(context) {
+                                return barWidth(context.chart) < 40 ? -90 : 0;
+                            },
+                            font: function(context) {
+                                const width = barWidth(context.chart);
+                                return {
+                                    weight: 'bold',
+                                    size: width < 40 ? 10 : width < 60 ? 13 : 16,
+                                };
                             },
                             formatter: function(value) {
                                 return value.toLocaleString('en-US');
@@ -353,11 +394,81 @@
         }
 
         /**
-         * Main render function: update KPI cards and chart.
+         * Render daily bar chart.
+         */
+        function renderDailyChart(data) {
+            // Destroy existing chart if it exists, so stale data never lingers on screen
+            if (dailyChart) {
+                dailyChart.destroy();
+                dailyChart = null;
+            }
+
+            if (!data || !data.daily_chart_data || data.daily_chart_data.length === 0) {
+                console.log('No daily chart data to render');
+                return;
+            }
+
+            const dates = data.daily_chart_data.map(d => d.date);
+            const sales = data.daily_chart_data.map(d => d.daily_sales);
+
+            // Chart title is the month of the data, e.g. "August 1" -> "August"
+            document.getElementById('chart-title').textContent = dates[0].split(' ')[0];
+
+            dailyChart = createBarChart('daily-sales-chart', dates, sales, {
+                showXLabels: false,
+            });
+        }
+
+        /**
+         * Render weekly bar chart with a dashed weekly target line.
+         */
+        function renderWeeklyChart(data) {
+            if (weeklyChart) {
+                weeklyChart.destroy();
+                weeklyChart = null;
+            }
+
+            if (!data || !data.weekly_chart_data || data.weekly_chart_data.length === 0) {
+                console.log('No weekly chart data to render');
+                return;
+            }
+
+            // Two-line labels, e.g. "28 Sep - 4 Oct" -> ["28 Sep -", "4 Oct"], so they fit on phones
+            const weeks = data.weekly_chart_data.map(d => d.week.replace(' - ', ' -\n').split('\n'));
+            const sales = data.weekly_chart_data.map(d => d.weekly_sales);
+            const target = data.weekly_target;
+            const extraDatasets = [];
+
+            if (target) {
+                document.getElementById('weekly-chart-title').textContent =
+                    `Weekly Sales (target ${formatNumber(target)})`;
+                extraDatasets.push({
+                    type: 'line',
+                    label: 'Target',
+                    data: weeks.map(() => target),
+                    borderColor: LABEL_COLOR,
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: 0,
+                    datalabels: { display: false },
+                });
+            }
+
+            weeklyChart = createBarChart('weekly-sales-chart', weeks, sales, {
+                showXLabels: true,
+                // Keep the target line in view even when every week is below it
+                suggestedMax: target,
+                extraDatasets: extraDatasets,
+            });
+        }
+
+        /**
+         * Main render function: update KPI cards and charts.
          */
         function render(data) {
             renderKPICards(data);
-            renderChart(data);
+            renderWeeklyChart(data);
+            renderDailyChart(data);
         }
 
         /**
