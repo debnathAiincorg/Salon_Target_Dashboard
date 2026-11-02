@@ -241,7 +241,7 @@
 
         <!-- Weekly Chart Section -->
         <div class="chart-card">
-            <div class="chart-title" id="weekly-chart-title">Weekly Sales</div>
+            <div class="chart-title" id="weekly-chart-title">Current Weekly</div>
             <div class="chart-container">
                 <canvas id="weekly-sales-chart"></canvas>
             </div>
@@ -430,8 +430,11 @@
             const dates = data.daily_chart_data.map(d => d.date);
             const sales = data.daily_chart_data.map(d => d.daily_sales);
 
-            // Chart title is the month of the data, e.g. "August 1" -> "August"
-            document.getElementById('chart-title').textContent = dates[0].split(' ')[0];
+            // Chart title is the month and year of the data, e.g. "November 2026".
+            // The year comes from last_updated ("2 November 2026, 10:00 AM IST").
+            const yearMatch = (data.last_updated || '').match(/\d{4}/);
+            const year = yearMatch ? yearMatch[0] : new Date().getFullYear();
+            document.getElementById('chart-title').textContent = `${dates[0].split(' ')[0]} ${year}`;
 
             dailyChart = createBarChart('daily-sales-chart', dates, sales, {
                 showXLabels: false,
@@ -460,7 +463,7 @@
 
             if (target) {
                 document.getElementById('weekly-chart-title').textContent =
-                    `Weekly Sales (target ${formatNumber(target)})`;
+                    `Current Weekly (target ${formatNumber(target)})`;
                 extraDatasets.push({
                     type: 'line',
                     label: 'Target',
