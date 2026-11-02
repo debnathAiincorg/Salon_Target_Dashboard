@@ -18,7 +18,7 @@ except ImportError:
 
 # Constants
 WEEKLY_TARGET = 15000
-WEEKS_IN_CHART = 6
+WEEKS_IN_CHART = 12
 OUTPUT_FILE = "daily-dashboard-data.json"
 
 # Azure AD configuration

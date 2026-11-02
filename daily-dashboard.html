@@ -371,7 +371,8 @@
                             ticks: {
                                 display: showXLabels,
                                 maxRotation: 0,
-                                autoSkip: false,
+                                // Skips some labels only when they would overlap (e.g. phones)
+                                autoSkip: true,
                                 font: function(context) {
                                     return { size: barWidth(context.chart) < 60 ? 10 : 12 };
                                 }
