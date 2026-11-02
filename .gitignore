@@ -13,3 +13,5 @@ env/
 .vscode/
 .superpowers/
 *.xlsx
+.stubs/
+.vfsmeta/
