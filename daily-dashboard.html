@@ -229,7 +229,8 @@
         const CHART_DATA_URL = "daily-dashboard-data.json";
         const YEARLY_DATA_URL = "monthly-dashboard-data.json";
         const BAR_COLOR = '#1ca0f2';
-        const LABEL_COLOR = '#f17777';
+        const VALUE_COLOR = '#000';
+        const REFERENCE_LINE_COLOR = '#f17777';
         const ABOVE_TARGET_COLOR = '#1e9e4a';  // green
         const BELOW_TARGET_COLOR = '#e03131';  // red
 
@@ -289,7 +290,7 @@
          * secondLabels, if given, adds a signed difference under the main label of each bar:
          * "+1,348" in green or "-10,492" in red (hidden when bars are too thin to fit two labels).
          */
-        function createBarChart(canvasId, labels, values, { showXLabels, suggestedMax, extraDatasets = [], secondLabels = null, valueColor = LABEL_COLOR }) {
+        function createBarChart(canvasId, labels, values, { showXLabels, suggestedMax, extraDatasets = [], secondLabels = null, valueColor = VALUE_COLOR }) {
             const ctx = document.getElementById(canvasId).getContext('2d');
             const isThin = chart => barWidth(chart) < 40;
             const showSecond = chart => secondLabels !== null && !isThin(chart);
@@ -413,6 +414,22 @@
         }
 
         /**
+         * Dashed horizontal line at a reference value (e.g. a target or an average).
+         */
+        function referenceLine(label, value, count) {
+            return {
+                type: 'line',
+                label: label,
+                data: new Array(count).fill(value),
+                borderColor: REFERENCE_LINE_COLOR,
+                borderWidth: 2,
+                borderDash: [6, 4],
+                pointRadius: 0,
+                datalabels: { display: false },
+            };
+        }
+
+        /**
          * Render daily bar chart.
          */
         function renderDailyChart(data) {
@@ -467,33 +484,19 @@
             const target = data.weekly_target;
             // Sales minus target: positive = above target, negative = still short
             const balances = sales.map(s => s - (target || 0));
-            const extraDatasets = [];
-
-            if (target) {
-                extraDatasets.push({
-                    type: 'line',
-                    label: 'Target',
-                    data: weeks.map(() => target),
-                    borderColor: LABEL_COLOR,
-                    borderWidth: 2,
-                    borderDash: [6, 4],
-                    pointRadius: 0,
-                    datalabels: { display: false },
-                });
-            }
 
             weeklyChart = createBarChart('weekly-sales-chart', weeks, sales, {
                 showXLabels: true,
                 // Keep the target line in view even when every week is below it
                 suggestedMax: target,
-                extraDatasets: extraDatasets,
+                extraDatasets: target ? [referenceLine('Target', target, weeks.length)] : [],
                 secondLabels: target ? balances : null,
-                valueColor: '#000',
             });
         }
 
         /**
-         * Render yearly bar chart: total sales for each month of the year.
+         * Render yearly bar chart: total sales for each month of the year, each bar
+         * showing its difference from the average month, with a dashed average line.
          */
         function renderYearlyChart(data) {
             if (yearlyChart) {
@@ -511,12 +514,18 @@
             const months = data.monthly_chart_data.map(m => m.month.slice(0, 3));
             const sales = data.monthly_chart_data.map(m => m.total_sales);
             const yearTotal = sales.reduce((sum, s) => sum + s, 0);
+            const averageMonthly = yearTotal / sales.length;
+            // Sales minus average: positive = above an average month, negative = below
+            const differences = sales.map(s => Math.round(s - averageMonthly));
 
             document.getElementById('yearly-chart-title').textContent =
-                `${data.year != null ? data.year : ''} · Year Total Sales: ${formatNumber(yearTotal)}`;
+                `${data.year != null ? data.year : ''} · Year Total Sales: ${formatNumber(yearTotal)}` +
+                ` · Average Monthly Sales: ${formatNumber(averageMonthly)}`;
 
             yearlyChart = createBarChart('yearly-sales-chart', months, sales, {
                 showXLabels: true,
+                extraDatasets: [referenceLine('Average', averageMonthly, months.length)],
+                secondLabels: differences,
             });
         }
 
