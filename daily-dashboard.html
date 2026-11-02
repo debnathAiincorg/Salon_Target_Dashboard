@@ -99,22 +99,6 @@
             font-weight: 700;
         }
 
-        /* Legend for the two labels on each weekly bar */
-        .chart-legend {
-            display: flex;
-            gap: 14px;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .legend-sales {
-            color: #f17777;
-        }
-
-        .legend-balance {
-            color: #555;
-        }
-
         .chart-container {
             position: relative;
             flex: 1;
@@ -193,10 +177,6 @@
             <div class="chart-card">
                 <div class="chart-header">
                     <div class="chart-title" id="weekly-chart-title">Remaining Days: -</div>
-                    <div class="chart-legend">
-                        <span class="legend-sales">Current Week Sales</span>
-                        <span class="legend-balance">Current Week Balance</span>
-                    </div>
                 </div>
                 <div class="chart-container">
                     <canvas id="weekly-sales-chart"></canvas>
@@ -221,7 +201,8 @@
         const CHART_DATA_URL = "daily-dashboard-data.json";
         const BAR_COLOR = '#1ca0f2';
         const LABEL_COLOR = '#f17777';
-        const BALANCE_COLOR = '#555';
+        const ABOVE_TARGET_COLOR = '#1e9e4a';  // green
+        const BELOW_TARGET_COLOR = '#e03131';  // red
 
         let dailyChart = null;
         let weeklyChart = null;
@@ -266,17 +247,17 @@
         /**
          * Create a bar chart with value labels above each bar.
          * extraDatasets are drawn on top of the bars (e.g. a target line).
-         * secondLabels, if given, adds a second value under the main label of each bar
-         * (hidden when bars are too thin to fit two labels).
+         * secondLabels, if given, adds a signed difference under the main label of each bar:
+         * "+1,348" in green or "-10,492" in red (hidden when bars are too thin to fit two labels).
          */
-        function createBarChart(canvasId, labels, values, { showXLabels, suggestedMax, extraDatasets = [], secondLabels = null }) {
+        function createBarChart(canvasId, labels, values, { showXLabels, suggestedMax, extraDatasets = [], secondLabels = null, valueColor = LABEL_COLOR }) {
             const ctx = document.getElementById(canvasId).getContext('2d');
             const isThin = chart => barWidth(chart) < 40;
             const showSecond = chart => secondLabels !== null && !isThin(chart);
 
             const dataLabels = {
                 value: {
-                    color: LABEL_COLOR,
+                    color: valueColor,
                     // Sits above the second label when that is shown
                     offset: function(context) {
                         return showSecond(context.chart) ? 20 : 2;
@@ -300,7 +281,9 @@
 
             if (secondLabels !== null) {
                 dataLabels.second = {
-                    color: BALANCE_COLOR,
+                    color: function(context) {
+                        return secondLabels[context.dataIndex] >= 0 ? ABOVE_TARGET_COLOR : BELOW_TARGET_COLOR;
+                    },
                     offset: 2,
                     // Bars only, not extra datasets such as the target line
                     display: function(context) {
@@ -310,7 +293,8 @@
                         return { weight: 'bold', size: barWidth(context.chart) < 60 ? 11 : 13 };
                     },
                     formatter: function(value, context) {
-                        return secondLabels[context.dataIndex].toLocaleString('en-US');
+                        const diff = secondLabels[context.dataIndex];
+                        return (diff >= 0 ? '+' : '-') + Math.abs(diff).toLocaleString('en-US');
                     }
                 };
             }
@@ -408,12 +392,12 @@
             const sales = data.daily_chart_data.map(d => d.daily_sales);
 
             // Chart title is the month and year of the data plus monthly sales,
-            // e.g. "November 2026 · Monthly Sales: 6,400".
+            // e.g. "November 2026 · Monthly Total Sales: 6,400".
             // The year comes from last_updated ("2 November 2026, 10:00 AM IST").
             const yearMatch = (data.last_updated || '').match(/\d{4}/);
             const year = yearMatch ? yearMatch[0] : new Date().getFullYear();
             document.getElementById('chart-title').textContent =
-                `${dates[0].split(' ')[0]} ${year} · Monthly Sales: ${formatNumber(data.monthly_sales)}`;
+                `${dates[0].split(' ')[0]} ${year} · Monthly Total Sales: ${formatNumber(data.monthly_sales)}`;
 
             dailyChart = createBarChart('daily-sales-chart', dates, sales, {
                 showXLabels: false,
@@ -442,7 +426,8 @@
             const weeks = data.weekly_chart_data.map(d => d.week.replace(' - ', ' -\n').split('\n'));
             const sales = data.weekly_chart_data.map(d => d.weekly_sales);
             const target = data.weekly_target;
-            const balances = sales.map(s => Math.max(0, (target || 0) - s));
+            // Sales minus target: positive = above target, negative = still short
+            const balances = sales.map(s => s - (target || 0));
             const extraDatasets = [];
 
             if (target) {
@@ -464,6 +449,7 @@
                 suggestedMax: target,
                 extraDatasets: extraDatasets,
                 secondLabels: target ? balances : null,
+                valueColor: '#000',
             });
         }
 
