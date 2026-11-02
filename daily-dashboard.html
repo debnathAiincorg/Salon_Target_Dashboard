@@ -73,8 +73,17 @@
             padding: 16px 24px;
         }
 
+        /* Top row: two charts side by side, same height as the daily chart */
+        .chart-row {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            gap: 12px;
+        }
+
         .chart-card {
             flex: 1;
+            min-width: 0;
             min-height: 0;
             display: flex;
             flex-direction: column;
@@ -110,14 +119,20 @@
             max-width: 100%;
         }
 
-        /* Phone, or a very short window: normal page flow with fixed chart heights */
-        @media (max-width: 768px), (max-height: 500px) {
+        /* Tablet/phone, or a very short window: charts stack in normal page flow
+           with fixed heights (side by side they would be too narrow to read) */
+        @media (max-width: 1100px), (max-height: 500px) {
             html, body {
                 height: auto;
             }
 
             .layout {
                 height: auto;
+            }
+
+            .chart-row {
+                flex: none;
+                flex-direction: column;
             }
 
             .chart-card {
@@ -173,13 +188,26 @@
         </aside>
 
         <main class="main">
-            <!-- Weekly Chart Section -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <div class="chart-title" id="weekly-chart-title">Remaining Days: -</div>
+            <!-- Top row: Yearly + Weekly charts side by side -->
+            <div class="chart-row">
+                <!-- Yearly Chart Section -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title" id="yearly-chart-title">-</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="yearly-sales-chart"></canvas>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="weekly-sales-chart"></canvas>
+
+                <!-- Weekly Chart Section -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title" id="weekly-chart-title">Remaining Days: -</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="weekly-sales-chart"></canvas>
+                    </div>
                 </div>
             </div>
 
@@ -199,6 +227,7 @@
         // Constants
         const AUTO_REFRESH_INTERVAL_MS = 30000;  // 30 seconds
         const CHART_DATA_URL = "daily-dashboard-data.json";
+        const YEARLY_DATA_URL = "monthly-dashboard-data.json";
         const BAR_COLOR = '#1ca0f2';
         const LABEL_COLOR = '#f17777';
         const ABOVE_TARGET_COLOR = '#1e9e4a';  // green
@@ -206,6 +235,7 @@
 
         let dailyChart = null;
         let weeklyChart = null;
+        let yearlyChart = null;
         let lastDataString = null;  // For change detection
 
         /**
@@ -220,11 +250,11 @@
         }
 
         /**
-         * Fetch dashboard data from JSON file with cache-busting.
+         * Fetch a JSON data file with cache-busting.
          */
-        async function loadDashboardData() {
+        async function loadJson(dataUrl) {
             try {
-                const url = `${CHART_DATA_URL}?t=${Date.now()}`;
+                const url = `${dataUrl}?t=${Date.now()}`;
                 const response = await fetch(url, { cache: 'no-store' });
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -232,9 +262,18 @@
                 const data = await response.json();
                 return data;
             } catch (error) {
-                console.error('Failed to load dashboard data:', error);
+                console.error(`Failed to load ${dataUrl}:`, error);
                 return null;
             }
+        }
+
+        /**
+         * Fetch daily and yearly dashboard data.
+         * Returns null only if both files fail to load.
+         */
+        async function loadDashboardData() {
+            const [daily, yearly] = await Promise.all([loadJson(CHART_DATA_URL), loadJson(YEARLY_DATA_URL)]);
+            return daily || yearly ? { daily, yearly } : null;
         }
 
         /**
@@ -454,11 +493,40 @@
         }
 
         /**
-         * Main render function: update both charts.
+         * Render yearly bar chart: total sales for each month of the year.
+         */
+        function renderYearlyChart(data) {
+            if (yearlyChart) {
+                yearlyChart.destroy();
+                yearlyChart = null;
+            }
+
+            if (!data || !data.monthly_chart_data || data.monthly_chart_data.length === 0) {
+                document.getElementById('yearly-chart-title').textContent = '-';
+                console.log('No yearly chart data to render');
+                return;
+            }
+
+            // Short month names, e.g. "January" -> "Jan", so 12 months fit in half the width
+            const months = data.monthly_chart_data.map(m => m.month.slice(0, 3));
+            const sales = data.monthly_chart_data.map(m => m.total_sales);
+            const yearTotal = sales.reduce((sum, s) => sum + s, 0);
+
+            document.getElementById('yearly-chart-title').textContent =
+                `${data.year != null ? data.year : ''} · Year Total Sales: ${formatNumber(yearTotal)}`;
+
+            yearlyChart = createBarChart('yearly-sales-chart', months, sales, {
+                showXLabels: true,
+            });
+        }
+
+        /**
+         * Main render function: update all charts.
          */
         function render(data) {
-            renderWeeklyChart(data);
-            renderDailyChart(data);
+            renderYearlyChart(data.yearly);
+            renderWeeklyChart(data.daily);
+            renderDailyChart(data.daily);
         }
 
         /**
