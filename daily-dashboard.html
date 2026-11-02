@@ -442,6 +442,18 @@
         }
 
         /**
+         * ISO week number of the year (weeks start Monday, matching the weekly data).
+         * Example: 2 November 2026 -> 45
+         */
+        function isoWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayOfWeek = d.getUTCDay() || 7;  // Sunday -> 7
+            d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek);  // Thursday of this week
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+        }
+
+        /**
          * Render weekly bar chart with a dashed weekly target line.
          */
         function renderWeeklyChart(data) {
@@ -449,6 +461,11 @@
                 weeklyChart.destroy();
                 weeklyChart = null;
             }
+
+            const target = data && data.weekly_target;
+            const targetText = target ? ` (target ${formatNumber(target)})` : '';
+            document.getElementById('weekly-chart-title').textContent =
+                `Current Weekly ${isoWeekNumber(new Date())}${targetText}`;
 
             if (!data || !data.weekly_chart_data || data.weekly_chart_data.length === 0) {
                 console.log('No weekly chart data to render');
@@ -458,12 +475,9 @@
             // Two-line labels, e.g. "28 Sep - 4 Oct" -> ["28 Sep -", "4 Oct"], so they fit on phones
             const weeks = data.weekly_chart_data.map(d => d.week.replace(' - ', ' -\n').split('\n'));
             const sales = data.weekly_chart_data.map(d => d.weekly_sales);
-            const target = data.weekly_target;
             const extraDatasets = [];
 
             if (target) {
-                document.getElementById('weekly-chart-title').textContent =
-                    `Current Weekly (target ${formatNumber(target)})`;
                 extraDatasets.push({
                     type: 'line',
                     label: 'Target',
