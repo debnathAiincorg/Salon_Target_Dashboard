@@ -11,5 +11,56 @@
       "daily_sales": 6400
     }
   ],
-  "last_updated": "2 November 2026, 2:00 PM IST"
+  "weekly_chart_data": [
+    {
+      "week": "17 Aug - 23 Aug",
+      "weekly_sales": 16348
+    },
+    {
+      "week": "24 Aug - 30 Aug",
+      "weekly_sales": 18118
+    },
+    {
+      "week": "31 Aug - 6 Sep",
+      "weekly_sales": 4508
+    },
+    {
+      "week": "7 Sep - 13 Sep",
+      "weekly_sales": 21554
+    },
+    {
+      "week": "14 Sep - 20 Sep",
+      "weekly_sales": 11969
+    },
+    {
+      "week": "21 Sep - 27 Sep",
+      "weekly_sales": 17585
+    },
+    {
+      "week": "28 Sep - 4 Oct",
+      "weekly_sales": 11998
+    },
+    {
+      "week": "5 Oct - 11 Oct",
+      "weekly_sales": 56366
+    },
+    {
+      "week": "12 Oct - 18 Oct",
+      "weekly_sales": 77538
+    },
+    {
+      "week": "19 Oct - 25 Oct",
+      "weekly_sales": 1550
+    },
+    {
+      "week": "26 Oct - 1 Nov",
+      "weekly_sales": 14319
+    },
+    {
+      "week": "2 Nov - 8 Nov",
+      "weekly_sales": 0
+    }
+  ],
+  "weekly_target": 15000,
+  "last_updated": "2 November 2026, 4:15 PM IST"
 }
