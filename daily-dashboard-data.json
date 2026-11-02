@@ -1,15 +1,15 @@
 {
   "current_date_label": "2 November",
-  "current_week_sales": 10119,
-  "current_week_balance": 4881,
+  "current_week_sales": 14319,
+  "current_week_balance": 681,
   "remaining_days": 7,
   "previous_week_sales": 1550,
-  "monthly_sales": 2200,
+  "monthly_sales": 6400,
   "daily_chart_data": [
     {
       "date": "November 1",
-      "daily_sales": 2200
+      "daily_sales": 6400
     }
   ],
-  "last_updated": "2 November 2026, 10:00 AM IST"
+  "last_updated": "2 November 2026, 2:00 PM IST"
 }
