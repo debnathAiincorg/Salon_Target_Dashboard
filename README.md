@@ -9,11 +9,11 @@ d:\Salon Target Dashboard\
 ├── sharepoint_excel.py            Shared: fetches Daily_Invoice.xlsx from SharePoint, parses it into daily totals
 ├── requirements.txt               Python dependencies (used by GitHub Actions)
 ├── fetch_daily_data.py            Backend script: reads Excel, computes daily/weekly metrics, writes JSON
-├── daily-dashboard.html           Frontend dashboard: reads daily-dashboard-data.json, renders KPI cards and chart
+├── daily-dashboard.html           Frontend dashboard: renders the yearly, monthly and weekly charts
+│                                  (yearly from monthly-dashboard-data.json, the others from daily-dashboard-data.json)
 ├── daily-dashboard-data.json      Generated output (created by fetch_daily_data.py)
 ├── fetch_monthly_data.py          Backend script: reads Excel, computes month-by-month totals for the current year, writes JSON
-├── monthly-dashboard.html         Frontend dashboard: reads monthly-dashboard-data.json, renders KPI cards and chart
-├── monthly-dashboard-data.json    Generated output (created by fetch_monthly_data.py)
+├── monthly-dashboard-data.json    Generated output (created by fetch_monthly_data.py), used by the yearly chart
 ├── .env.example                   Example environment variable settings
 └── docs/superpowers/
     ├── specs/2026-06-24-sales-dashboard-design.md
