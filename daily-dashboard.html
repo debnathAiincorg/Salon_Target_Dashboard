@@ -61,7 +61,8 @@
         /* Header: stats on the left, heading in the middle */
         .chart-header {
             display: grid;
-            grid-template-columns: 1fr auto 1fr;
+            /* Stats column never narrower than its text, so each stat stays on one line */
+            grid-template-columns: minmax(max-content, 1fr) auto 1fr;
             align-items: start;
             gap: 12px;
             margin-bottom: 4px;
@@ -73,6 +74,7 @@
             font-size: 13px;
             line-height: 1.4;
             color: #555;
+            white-space: nowrap;
         }
 
         .chart-stats b {
@@ -179,7 +181,7 @@
             <div class="chart-card">
                 <div class="chart-header">
                     <div class="chart-stats" id="yearly-stats"></div>
-                    <div class="chart-title" id="yearly-chart-title">Year: -</div>
+                    <div class="chart-title" id="yearly-chart-title">Current Year: -</div>
                 </div>
                 <div class="chart-container">
                     <canvas id="yearly-sales-chart"></canvas>
@@ -190,7 +192,7 @@
             <div class="chart-card">
                 <div class="chart-header">
                     <div class="chart-stats" id="weekly-stats"></div>
-                    <div class="chart-title" id="weekly-chart-title">Weekly: -</div>
+                    <div class="chart-title" id="weekly-chart-title">Current Weekly: -</div>
                 </div>
                 <div class="chart-container">
                     <canvas id="weekly-sales-chart"></canvas>
@@ -454,10 +456,11 @@
         }
 
         /**
-         * Render daily bar chart: heading "November 2026", monthly total and
-         * daily average so far this month.
+         * Render daily bar chart: heading "Current Month: November 2026", monthly total,
+         * daily average so far this month and the previous month's daily average.
+         * yearlyData supplies the previous month's total.
          */
-        function renderDailyChart(data) {
+        function renderDailyChart(data, yearlyData) {
             // Destroy existing chart if it exists, so stale data never lingers on screen
             if (dailyChart) {
                 dailyChart.destroy();
@@ -476,14 +479,29 @@
             // Heading is the month and year of the data, e.g. "November 2026".
             // The year comes from last_updated ("2 November 2026, 10:00 AM IST").
             const yearMatch = (data.last_updated || '').match(/\d{4}/);
-            const year = yearMatch ? yearMatch[0] : new Date().getFullYear();
-            document.getElementById('chart-title').textContent = `${dates[0].split(' ')[0]} ${year}`;
+            const year = yearMatch ? Number(yearMatch[0]) : new Date().getFullYear();
+            const monthName = dates[0].split(' ')[0];
+            document.getElementById('chart-title').textContent = `Current Month: ${monthName} ${year}`;
 
             // Daily average over the days of the month so far, including today
             const daysSoFar = new Date().getDate();
+
+            // Previous month's daily average: its total (from the yearly data) over all its days.
+            // Not available in January, since the yearly data only covers the current year.
+            let previousMonthAverage = '-';
+            const months = yearlyData && yearlyData.monthly_chart_data ? yearlyData.monthly_chart_data : [];
+            const monthIndex = months.findIndex(m => m.month === monthName);
+            if (monthIndex > 0) {
+                const previous = months[monthIndex - 1];
+                const previousMonthNumber = new Date(`${previous.month} 1, ${year}`).getMonth();
+                const daysInPreviousMonth = new Date(year, previousMonthNumber + 1, 0).getDate();
+                previousMonthAverage = previous.total_sales / daysInPreviousMonth;
+            }
+
             renderStats('daily-stats', [
                 ['Monthly Total Sales', data.monthly_sales],
-                ['Daily Average Sales of This Month', data.monthly_sales / daysSoFar],
+                ['Current Month Daily Average Sales', data.monthly_sales / daysSoFar],
+                ['Previous Month Daily Average Sales', previousMonthAverage],
             ]);
 
             dailyChart = createBarChart('daily-sales-chart', dates, sales, {
@@ -501,7 +519,7 @@
                 weeklyChart = null;
             }
 
-            document.getElementById('weekly-chart-title').textContent = `Weekly: ${isoWeekNumber(new Date())}`;
+            document.getElementById('weekly-chart-title').textContent = `Current Weekly: ${isoWeekNumber(new Date())}`;
 
             if (!data || !data.weekly_chart_data || data.weekly_chart_data.length === 0) {
                 renderStats('weekly-stats', data ? [['Remaining Days', data.remaining_days]] : []);
@@ -518,11 +536,14 @@
 
             // Daily average for the current (last) week over its days so far, including today.
             // remaining_days counts today, so Monday = 7 remaining = 1 day so far.
+            // The previous week is complete, so its average is over all 7 days.
             const currentWeekSales = sales[sales.length - 1];
+            const previousWeekSales = sales.length >= 2 ? sales[sales.length - 2] : null;
             const daysSoFar = Math.min(7, Math.max(1, 8 - data.remaining_days));
             renderStats('weekly-stats', [
                 ['Remaining Days', data.remaining_days],
-                ['Daily Average Sales of This Week', currentWeekSales / daysSoFar],
+                ['Current Week Daily Average Sales', currentWeekSales / daysSoFar],
+                ['Previous Week Daily Average Sales', previousWeekSales !== null ? previousWeekSales / 7 : '-'],
             ]);
 
             weeklyChart = createBarChart('weekly-sales-chart', weeks, sales, {
@@ -545,7 +566,7 @@
             }
 
             if (!data || !data.monthly_chart_data || data.monthly_chart_data.length === 0) {
-                document.getElementById('yearly-chart-title').textContent = 'Year: -';
+                document.getElementById('yearly-chart-title').textContent = 'Current Year: -';
                 renderStats('yearly-stats', []);
                 console.log('No yearly chart data to render');
                 return;
@@ -566,11 +587,11 @@
                 ? dayOfYear(today)
                 : dayOfYear(new Date(data.year, 11, 31));
 
-            document.getElementById('yearly-chart-title').textContent = `Year: ${data.year != null ? data.year : '-'}`;
+            document.getElementById('yearly-chart-title').textContent = `Current Year: ${data.year != null ? data.year : '-'}`;
             renderStats('yearly-stats', [
                 ['Year Total Sales', yearTotal],
                 ['Average Monthly Sales', averageMonthly],
-                ['Daily Average Sales of This Year', yearTotal / daysSoFar],
+                ['Current Year Daily Average Sales', yearTotal / daysSoFar],
             ]);
 
             yearlyChart = createBarChart('yearly-sales-chart', months, sales, {
@@ -588,7 +609,7 @@
         function render(data) {
             renderYearlyChart(data.yearly);
             renderWeeklyChart(data.daily);
-            renderDailyChart(data.daily);
+            renderDailyChart(data.daily, data.yearly);
         }
 
         /**
