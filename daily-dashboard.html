@@ -287,7 +287,7 @@
         const ABOVE_TARGET_COLOR = '#1e9e4a';  // green
         const BELOW_TARGET_COLOR = '#e03131';  // red
         const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;  // India has no daylight saving
-        const UPDATE_DUE_HOUR_IST = 23;  // From 11 PM the data counts as pending until the next refresh
+        const UPDATE_DUE_HOUR_IST = 0;  // From midnight (a new day) the data counts as pending until the next refresh
         const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
                              'August', 'September', 'October', 'November', 'December'];
 
@@ -663,7 +663,7 @@
         }
 
         /**
-         * The most recent 11 PM IST at or before now, as a UTC timestamp (ms).
+         * The most recent UPDATE_DUE_HOUR_IST (midnight IST) at or before now, as a UTC timestamp (ms).
          */
         function lastUpdateDueTime() {
             // Shifting by the offset lets the UTC getters read IST wall-clock values
@@ -675,8 +675,8 @@
         }
 
         /**
-         * Show the status light: green "Updated" when the data was refreshed after the
-         * last 11 PM IST, red "Update Pending" from 11 PM until the next data refresh.
+         * Show the status light: green "Updated" when the data was refreshed today (IST),
+         * red "Update Pending" from midnight until the next data refresh.
          */
         function renderUpdateStatus(data) {
             const status = document.getElementById('update-status');
@@ -721,7 +721,7 @@
 
             // Set up auto-refresh
             setInterval(async () => {
-                // Turns the light red at 11 PM even when the data has not changed
+                // Turns the light red at midnight even when the data has not changed
                 renderUpdateStatus(lastData);
 
                 // No polling while the tab is in the background
