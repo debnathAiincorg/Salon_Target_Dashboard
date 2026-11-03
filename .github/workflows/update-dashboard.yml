@@ -19,11 +19,11 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+          # Reuse downloaded packages between runs (keyed on requirements.txt)
+          cache: 'pip'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install openpyxl requests
+        run: pip install -r requirements.txt
 
       - name: Fetch and compute daily dashboard data
         env:

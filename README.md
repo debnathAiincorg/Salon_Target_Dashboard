@@ -6,6 +6,8 @@ A full-stack sales dashboard that reads live data from SharePoint via Microsoft 
 
 ```
 d:\Salon Target Dashboard\
+├── sharepoint_excel.py            Shared: fetches Daily_Invoice.xlsx from SharePoint, parses it into daily totals
+├── requirements.txt               Python dependencies (used by GitHub Actions)
 ├── fetch_daily_data.py            Backend script: reads Excel, computes daily/weekly metrics, writes JSON
 ├── daily-dashboard.html           Frontend dashboard: reads daily-dashboard-data.json, renders KPI cards and chart
 ├── daily-dashboard-data.json      Generated output (created by fetch_daily_data.py)

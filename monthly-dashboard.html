@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monthly Sales Dashboard</title>
 
-    <!-- Chart.js library -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <!-- Chart.js library (defer: downloads in parallel without blocking the first paint) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <!-- Chart.js Data Labels Plugin -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
     <style>
         * {
@@ -350,6 +350,8 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    // Draw at once instead of a 1s grow animation on every load and refresh
+                    animation: false,
                     indexAxis: 'x',
                     scales: {
                         y: {
@@ -418,6 +420,9 @@
             renderChart(data);
         }
 
+        // Start fetching data now, while the deferred chart libraries are still downloading
+        const initialDataPromise = loadDashboardData();
+
         /**
          * Initialize the dashboard and set up auto-refresh.
          */
@@ -425,7 +430,7 @@
             console.log('Initializing monthly dashboard...');
 
             // Initial load
-            const data = await loadDashboardData();
+            const data = await initialDataPromise;
             if (data) {
                 render(data);
                 lastDataString = JSON.stringify(data);
@@ -433,6 +438,10 @@
 
             // Set up auto-refresh
             setInterval(async () => {
+                // No polling while the tab is in the background
+                if (document.hidden) {
+                    return;
+                }
                 const freshData = await loadDashboardData();
                 if (freshData) {
                     const freshDataString = JSON.stringify(freshData);
