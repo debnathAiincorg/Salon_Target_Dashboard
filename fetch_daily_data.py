@@ -290,6 +290,55 @@ def compute_kpi_metrics(daily_records, weekly_summary):
         "current_month_sales": current_month_sales,  # For chart data
     }
 
+def compute_daily_averages(daily_records, weekly_summary):
+    """Compute heading values and daily averages for the weekly and daily charts.
+
+    The data is refreshed once a day and covers sales up to yesterday, so averages
+    use completed days only: sales up to and including yesterday, divided by the
+    number of days from the start of the period up to yesterday. Today's partial
+    sales are left out. A period with no completed days yet (Monday for the week,
+    the 1st for the month) has an average of 0.
+
+    Args:
+        daily_records: List of dicts with 'date' and 'daily_sales'
+        weekly_summary: Dict keyed by week_start_date
+
+    Returns:
+        Dict with week_number, month_label, current/previous week daily averages
+        and current/previous month daily averages (all averages rounded ints).
+    """
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    yesterday = today - timedelta(days=1)
+
+    def sales_between(start, end):
+        return sum(r["daily_sales"] for r in daily_records if start <= r["date"] <= end)
+
+    def average(total, days):
+        return int(round(total / days)) if days > 0 else 0
+
+    # Current week (Monday to Sunday containing today) and the full week before it
+    week_start = today - timedelta(days=today.weekday())
+    week_days_done = (yesterday - week_start).days + 1
+    previous_week_start = week_start - timedelta(weeks=1)
+    previous_week = weekly_summary.get(previous_week_start)
+
+    # Current month and the full month before it
+    month_start = today.replace(day=1)
+    month_days_done = (yesterday - month_start).days + 1
+    previous_month_end = month_start - timedelta(days=1)
+    previous_month_start = previous_month_end.replace(day=1)
+
+    return {
+        "week_number": today.isocalendar()[1],
+        "month_label": today.strftime("%B %Y"),
+        "current_week_daily_average": average(sales_between(week_start, yesterday), week_days_done),
+        "previous_week_daily_average": average(previous_week["total_sales"] if previous_week else 0, 7),
+        "current_month_daily_average": average(sales_between(month_start, yesterday), month_days_done),
+        "previous_month_daily_average": average(
+            sales_between(previous_month_start, previous_month_end), previous_month_end.day
+        ),
+    }
+
 def format_ist_timestamp():
     """Return the current IST time formatted as 'D Month YYYY, H:MM AM/PM IST'."""
     now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
@@ -351,13 +400,14 @@ def generate_weekly_chart_data(weekly_summary):
 
     return chart_data
 
-def write_dashboard_json(kpi, chart_data, weekly_chart_data, output_file):
+def write_dashboard_json(kpi, chart_data, weekly_chart_data, averages, output_file):
     """Write dashboard data to JSON file.
 
     Args:
         kpi: Dict with KPI metrics (current_date_label, current_week_sales, etc.)
         chart_data: List of dicts with chart data
         weekly_chart_data: List of dicts with weekly chart data
+        averages: Dict from compute_daily_averages
         output_file: Path to output JSON file
     """
     dashboard_data = {
@@ -370,6 +420,7 @@ def write_dashboard_json(kpi, chart_data, weekly_chart_data, output_file):
         "daily_chart_data": chart_data,
         "weekly_chart_data": weekly_chart_data,
         "weekly_target": WEEKLY_TARGET,
+        **averages,
         "last_updated": format_ist_timestamp(),
     }
 
@@ -416,9 +467,10 @@ def main():
         # Step 6: Generate chart data
         chart_data = generate_chart_data(kpi["current_month_sales"])
         weekly_chart_data = generate_weekly_chart_data(weekly_summary)
+        averages = compute_daily_averages(daily_records, weekly_summary)
 
         # Step 7: Write output JSON
-        write_dashboard_json(kpi, chart_data, weekly_chart_data, OUTPUT_FILE)
+        write_dashboard_json(kpi, chart_data, weekly_chart_data, averages, OUTPUT_FILE)
 
         print("SUCCESS: Dashboard data computed and written")
 

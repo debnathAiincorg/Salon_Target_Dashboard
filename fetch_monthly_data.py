@@ -2,7 +2,7 @@ import os
 import json
 import base64
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import openpyxl
 import requests
@@ -204,24 +204,54 @@ def compute_monthly_summary(daily_records):
 
     return monthly_summary
 
+def compute_year_stats(daily_records, monthly_summary):
+    """Compute the yearly chart's stats: year total, average month and daily average.
+
+    The data is refreshed once a day and covers sales up to yesterday, so the daily
+    average uses completed days only: this year's sales up to and including
+    yesterday, divided by the days from 1 January up to yesterday (0 on 1 January).
+
+    Args:
+        daily_records: List of dicts with 'date' (datetime.date) and 'daily_sales'
+        monthly_summary: List of dicts with 'month' and 'total_sales' for this year
+
+    Returns:
+        Dict with year_total_sales, average_monthly_sales and year_daily_average (ints).
+    """
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    yesterday = today - timedelta(days=1)
+    year_start = today.replace(month=1, day=1)
+
+    year_total = sum(entry["total_sales"] for entry in monthly_summary)
+    days_done = (yesterday - year_start).days + 1
+    sales_done = sum(r["daily_sales"] for r in daily_records if year_start <= r["date"] <= yesterday)
+
+    return {
+        "year_total_sales": int(year_total),
+        "average_monthly_sales": int(round(year_total / len(monthly_summary))) if monthly_summary else 0,
+        "year_daily_average": int(round(sales_done / days_done)) if days_done > 0 else 0,
+    }
+
 def format_ist_timestamp():
     """Return the current IST time formatted as 'D Month YYYY, H:MM AM/PM IST'."""
     now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
     hour_12 = now_ist.strftime("%I").lstrip("0") or "12"
     return f"{now_ist.day} {now_ist.strftime('%B %Y')}, {hour_12}:{now_ist.strftime('%M %p')} IST"
 
-def write_monthly_json(year, monthly_summary, output_file):
+def write_monthly_json(year, monthly_summary, year_stats, output_file):
     """Write year-scoped monthly summary to JSON file.
 
     Args:
         year: int, the year the monthly_summary belongs to
         monthly_summary: List of dicts with 'month' and 'total_sales'
+        year_stats: Dict from compute_year_stats
         output_file: Path to output JSON file
     """
     monthly_data = {
         "year": year,
         "monthly_chart_data": monthly_summary,
         "monthly_target": MONTHLY_TARGET,
+        **year_stats,
         "last_updated": format_ist_timestamp(),
     }
 
@@ -262,8 +292,10 @@ def main():
         for entry in monthly_summary:
             print(f"  {entry['month']}: {entry['total_sales']}")
 
+        year_stats = compute_year_stats(daily_records, monthly_summary)
+
         # Step 5: Write output JSON
-        write_monthly_json(today.year, monthly_summary, OUTPUT_FILE)
+        write_monthly_json(today.year, monthly_summary, year_stats, OUTPUT_FILE)
 
         print("SUCCESS: Monthly dashboard data computed and written")
 
