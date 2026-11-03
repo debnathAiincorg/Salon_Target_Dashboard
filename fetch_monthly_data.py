@@ -16,6 +16,7 @@ except ImportError:
     pass
 
 # Constants
+MONTHLY_TARGET = 60000
 OUTPUT_FILE = "monthly-dashboard-data.json"
 
 # Azure AD configuration
@@ -220,6 +221,7 @@ def write_monthly_json(year, monthly_summary, output_file):
     monthly_data = {
         "year": year,
         "monthly_chart_data": monthly_summary,
+        "monthly_target": MONTHLY_TARGET,
         "last_updated": format_ist_timestamp(),
     }
 
