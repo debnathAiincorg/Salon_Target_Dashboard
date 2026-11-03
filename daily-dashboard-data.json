@@ -1,14 +1,18 @@
 {
-  "current_date_label": "2 November",
-  "current_week_sales": 14319,
-  "current_week_balance": 681,
-  "remaining_days": 7,
-  "previous_week_sales": 1550,
-  "monthly_sales": 6400,
+  "current_date_label": "3 November",
+  "current_week_sales": 1859,
+  "current_week_balance": 13141,
+  "remaining_days": 6,
+  "previous_week_sales": 14319,
+  "monthly_sales": 8259,
   "daily_chart_data": [
     {
       "date": "November 1",
       "daily_sales": 6400
+    },
+    {
+      "date": "November 2",
+      "daily_sales": 1859
     }
   ],
   "weekly_chart_data": [
@@ -58,9 +62,9 @@
     },
     {
       "week": "2 Nov - 8 Nov",
-      "weekly_sales": 0
+      "weekly_sales": 1859
     }
   ],
   "weekly_target": 15000,
-  "last_updated": "2 November 2026, 4:15 PM IST"
+  "last_updated": "3 November 2026, 10:00 AM IST"
 }
