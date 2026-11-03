@@ -102,6 +102,48 @@
             max-width: 100%;
         }
 
+        /* Data status light, top-right corner: one flashing light, green or red */
+        .update-status {
+            position: fixed;
+            top: 22px;
+            right: 34px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 12px;
+            border: 1px solid currentColor;
+            border-radius: 999px;
+            background-color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .update-status.updated {
+            color: #1e9e4a;  /* green */
+        }
+
+        .update-status.pending {
+            color: #e03131;  /* red */
+        }
+
+        .status-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: currentColor;
+            box-shadow: 0 0 6px currentColor;
+            animation: status-flash 1s ease-in-out infinite;
+        }
+
+        @keyframes status-flash {
+            50% {
+                opacity: 0.15;
+                box-shadow: none;
+            }
+        }
+
         /* Tablet/phone: the three charts stack, still sharing the screen height */
         @media (max-width: 1100px) {
             .main {
@@ -117,6 +159,11 @@
 
             .chart-card {
                 padding: 6px 10px;
+            }
+
+            .update-status {
+                top: 14px;
+                right: 18px;
             }
         }
 
@@ -170,10 +217,27 @@
                 font-size: 11px;
                 line-height: 1.3;
             }
+
+            .update-status {
+                gap: 5px;
+                padding: 3px 8px;
+                font-size: 10px;
+            }
+
+            .status-light {
+                width: 9px;
+                height: 9px;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Data status: green "Updated" or red "Update Pending" (see renderUpdateStatus) -->
+    <div class="update-status" id="update-status" role="status" hidden>
+        <span class="status-light"></span>
+        <span id="update-status-text"></span>
+    </div>
+
     <main class="main">
         <!-- Top row: Yearly + Monthly charts side by side -->
         <div class="chart-row">
@@ -222,11 +286,16 @@
         const REFERENCE_LINE_COLOR = '#f17777';
         const ABOVE_TARGET_COLOR = '#1e9e4a';  // green
         const BELOW_TARGET_COLOR = '#e03131';  // red
+        const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;  // India has no daylight saving
+        const UPDATE_DUE_HOUR_IST = 23;  // From 11 PM the data counts as pending until the next refresh
+        const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+                             'August', 'September', 'October', 'November', 'December'];
 
         let dailyChart = null;
         let weeklyChart = null;
         let yearlyChart = null;
         let lastDataString = null;  // For change detection
+        let lastData = null;  // Last data rendered, for re-checking the update status
 
         /**
          * Format a number with thousands separators.
@@ -475,11 +544,12 @@
                 return;
             }
 
-            const dates = data.daily_chart_data.map(d => d.date);
+            // Day of the month under each bar, e.g. "November 3" -> "3"
+            const days = data.daily_chart_data.map(d => d.date.split(' ').pop());
             const sales = data.daily_chart_data.map(d => d.daily_sales);
 
-            dailyChart = createBarChart('daily-sales-chart', dates, sales, {
-                showXLabels: false,
+            dailyChart = createBarChart('daily-sales-chart', days, sales, {
+                showXLabels: true,
             });
         }
 
@@ -574,12 +644,61 @@
         }
 
         /**
+         * Parse a "last_updated" value written by format_ist_timestamp() in the Python
+         * scripts, e.g. "3 November 2026, 11:54 AM IST", into a UTC timestamp (ms).
+         * Returns null if the text is missing or not in that format.
+         */
+        function parseIstTimestamp(text) {
+            const match = /^(\d{1,2}) ([A-Za-z]+) (\d{4}), (\d{1,2}):(\d{2}) (AM|PM) IST$/.exec(text || '');
+            if (!match) {
+                return null;
+            }
+            const [, day, monthName, year, hour12, minute, meridiem] = match;
+            const month = MONTH_NAMES.indexOf(monthName);
+            if (month === -1) {
+                return null;
+            }
+            const hour = (Number(hour12) % 12) + (meridiem === 'PM' ? 12 : 0);
+            return Date.UTC(Number(year), month, Number(day), hour, Number(minute)) - IST_OFFSET_MS;
+        }
+
+        /**
+         * The most recent 11 PM IST at or before now, as a UTC timestamp (ms).
+         */
+        function lastUpdateDueTime() {
+            // Shifting by the offset lets the UTC getters read IST wall-clock values
+            const nowIst = new Date(Date.now() + IST_OFFSET_MS);
+            const dayOffset = nowIst.getUTCHours() >= UPDATE_DUE_HOUR_IST ? 0 : -1;
+            return Date.UTC(
+                nowIst.getUTCFullYear(), nowIst.getUTCMonth(), nowIst.getUTCDate() + dayOffset, UPDATE_DUE_HOUR_IST
+            ) - IST_OFFSET_MS;
+        }
+
+        /**
+         * Show the status light: green "Updated" when the data was refreshed after the
+         * last 11 PM IST, red "Update Pending" from 11 PM until the next data refresh.
+         */
+        function renderUpdateStatus(data) {
+            const status = document.getElementById('update-status');
+            const lastUpdatedText = data && data.daily && data.daily.last_updated;
+            const lastUpdated = parseIstTimestamp(lastUpdatedText);
+            const isUpdated = lastUpdated !== null && lastUpdated >= lastUpdateDueTime();
+
+            status.className = `update-status ${isUpdated ? 'updated' : 'pending'}`;
+            document.getElementById('update-status-text').textContent = isUpdated ? 'Updated' : 'Update Pending';
+            status.title = `Last updated: ${lastUpdatedText || '-'}`;
+            status.hidden = false;
+        }
+
+        /**
          * Main render function: update all charts.
          */
         function render(data) {
             renderYearlyChart(data.yearly);
             renderWeeklyChart(data.daily);
             renderDailyChart(data.daily);
+            renderUpdateStatus(data);
+            lastData = data;
         }
 
         // Start fetching data now, while the deferred chart libraries are still downloading
@@ -596,10 +715,15 @@
             if (data) {
                 render(data);
                 lastDataString = JSON.stringify(data);
+            } else {
+                renderUpdateStatus(null);  // No data could be loaded: show pending
             }
 
             // Set up auto-refresh
             setInterval(async () => {
+                // Turns the light red at 11 PM even when the data has not changed
+                renderUpdateStatus(lastData);
+
                 // No polling while the tab is in the background
                 if (document.hidden) {
                     return;
