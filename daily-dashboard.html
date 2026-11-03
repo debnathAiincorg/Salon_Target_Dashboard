@@ -38,7 +38,7 @@
             padding: 16px 24px;
         }
 
-        /* Top row: Yearly + Weekly side by side, same height as the daily chart */
+        /* Top row: Yearly + Monthly side by side, same height as the weekly chart */
         .chart-row {
             flex: 1;
             min-height: 0;
@@ -175,39 +175,39 @@
 </head>
 <body>
     <main class="main">
-        <!-- Top row: Yearly + Weekly charts side by side -->
+        <!-- Top row: Yearly + Monthly charts side by side -->
         <div class="chart-row">
             <!-- Yearly Chart Section -->
             <div class="chart-card">
                 <div class="chart-header">
                     <div class="chart-stats" id="yearly-stats"></div>
-                    <div class="chart-title" id="yearly-chart-title">Year Sales: -</div>
+                    <div class="chart-title" id="yearly-chart-title">Yearly Sales: -</div>
                 </div>
                 <div class="chart-container">
                     <canvas id="yearly-sales-chart"></canvas>
                 </div>
             </div>
 
-            <!-- Weekly Chart Section -->
+            <!-- Daily Chart Section -->
             <div class="chart-card">
                 <div class="chart-header">
-                    <div class="chart-stats" id="weekly-stats"></div>
-                    <div class="chart-title" id="weekly-chart-title">Weekly Sales: -</div>
+                    <div class="chart-stats" id="daily-stats"></div>
+                    <div class="chart-title" id="chart-title">Monthly Sales: -</div>
                 </div>
                 <div class="chart-container">
-                    <canvas id="weekly-sales-chart"></canvas>
+                    <canvas id="daily-sales-chart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Daily Chart Section -->
+        <!-- Weekly Chart Section -->
         <div class="chart-card">
             <div class="chart-header">
-                <div class="chart-stats" id="daily-stats"></div>
-                <div class="chart-title" id="chart-title">Month Sales: -</div>
+                <div class="chart-stats" id="weekly-stats"></div>
+                <div class="chart-title" id="weekly-chart-title">Weekly Sales: -</div>
             </div>
             <div class="chart-container">
-                <canvas id="daily-sales-chart"></canvas>
+                <canvas id="weekly-sales-chart"></canvas>
             </div>
         </div>
     </main>
@@ -444,7 +444,7 @@
         }
 
         /**
-         * Render daily bar chart: heading "Month Sales: November 2026", monthly total,
+         * Render daily bar chart: heading "Monthly Sales: November 2026", monthly total,
          * and current and previous month daily averages.
          */
         function renderDailyChart(data) {
@@ -455,7 +455,7 @@
             }
 
             document.getElementById('chart-title').textContent =
-                `Month Sales: ${valueOrDash(data && data.month_label)}`;
+                `Monthly Sales: ${valueOrDash(data && data.month_label)}`;
 
             if (!data) {
                 renderStats('daily-stats', []);
@@ -537,7 +537,7 @@
             }
 
             document.getElementById('yearly-chart-title').textContent =
-                `Year Sales: ${valueOrDash(data && data.year)}`;
+                `Yearly Sales: ${valueOrDash(data && data.year)}`;
 
             if (!data) {
                 renderStats('yearly-stats', []);
