@@ -28,10 +28,43 @@
             font-size: 16px;
         }
 
-        /* Full-screen layout: charts share the screen height */
-        .main {
+        /* App shell: nav bar on top, sidebar on the left, status bar at the bottom */
+        .app {
             height: 100vh;
             height: 100dvh;  /* Phones: excludes the browser address bar */
+            display: grid;
+            grid-template-columns: 48px 1fr;
+            grid-template-rows: 44px 1fr 24px;
+            grid-template-areas:
+                "navbar  navbar"
+                "sidebar main"
+                "statusbar statusbar";
+        }
+
+        .navbar {
+            grid-area: navbar;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 24px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .sidebar {
+            grid-area: sidebar;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .statusbar {
+            grid-area: statusbar;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        /* Charts share the space left between the bars */
+        .main {
+            grid-area: main;
+            min-width: 0;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -102,16 +135,12 @@
             max-width: 100%;
         }
 
-        /* Data status light, top-right corner: one flashing light, green or red */
+        /* Data status light, right side of the nav bar: one flashing light, green or red */
         .update-status {
-            position: fixed;
-            top: 22px;
-            right: 34px;
-            z-index: 10;
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 5px 12px;
+            padding: 4px 12px;
             border: 1px solid currentColor;
             border-radius: 999px;
             background-color: #fff;
@@ -161,9 +190,8 @@
                 padding: 6px 10px;
             }
 
-            .update-status {
-                top: 14px;
-                right: 18px;
+            .navbar {
+                padding: 0 12px;
             }
         }
 
@@ -232,11 +260,16 @@
     </style>
 </head>
 <body>
-    <!-- Data status: green "Updated" or red "Update Pending" (see renderUpdateStatus) -->
-    <div class="update-status" id="update-status" role="status" hidden>
-        <span class="status-light"></span>
-        <span id="update-status-text"></span>
-    </div>
+<div class="app">
+    <header class="navbar">
+        <!-- Data status: green "Updated" or red "Update Pending" (see renderUpdateStatus) -->
+        <div class="update-status" id="update-status" role="status" hidden>
+            <span class="status-light"></span>
+            <span id="update-status-text"></span>
+        </div>
+    </header>
+
+    <nav class="sidebar"></nav>
 
     <main class="main">
         <!-- Top row: Yearly + Monthly charts side by side -->
@@ -275,6 +308,9 @@
             </div>
         </div>
     </main>
+
+    <footer class="statusbar"></footer>
+</div>
 
     <script>
         // Constants
