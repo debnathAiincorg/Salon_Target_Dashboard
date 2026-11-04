@@ -46,6 +46,7 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
+            gap: 12px;
             padding: 0 24px;
             border-bottom: 1px solid #b5dbf6;
             background-color: #d4eafb;  /* soft tint of the chart blue */
@@ -152,6 +153,16 @@
             white-space: nowrap;
         }
 
+        .last-updated {
+            font-size: 13px;
+            color: #555;
+            white-space: nowrap;
+        }
+
+        .last-updated b {
+            color: #000;
+        }
+
         .update-status.updated {
             color: #1e9e4a;  /* green */
         }
@@ -249,6 +260,10 @@
                 line-height: 1.3;
             }
 
+            .last-updated {
+                font-size: 10px;
+            }
+
             .update-status {
                 gap: 5px;
                 padding: 3px 8px;
@@ -265,7 +280,10 @@
 <body>
 <div class="app">
     <header class="navbar">
-        <!-- Data status: green "Updated" or red "Update Pending" (see renderUpdateStatus) -->
+        <!-- Data status: last update time, then green "Updated" or red "Not Updated" (see renderUpdateStatus) -->
+        <div class="last-updated" id="last-updated" hidden>
+            Last updated (Indian time): <b id="last-updated-text"></b>
+        </div>
         <div class="update-status" id="update-status" role="status" hidden>
             <span class="status-light"></span>
             <span id="update-status-text"></span>
@@ -715,7 +733,8 @@
 
         /**
          * Show the status light: green "Updated" when the data was refreshed today (IST),
-         * red "Update Pending" from midnight until the next data refresh.
+         * red "Not Updated" from midnight until the next data refresh.
+         * The last update time (IST) is shown beside it.
          */
         function renderUpdateStatus(data) {
             const status = document.getElementById('update-status');
@@ -724,9 +743,14 @@
             const isUpdated = lastUpdated !== null && lastUpdated >= lastUpdateDueTime();
 
             status.className = `update-status ${isUpdated ? 'updated' : 'pending'}`;
-            document.getElementById('update-status-text').textContent = isUpdated ? 'Updated' : 'Update Pending';
+            document.getElementById('update-status-text').textContent = isUpdated ? 'Updated' : 'Not Updated';
             status.title = `Last updated: ${lastUpdatedText || '-'}`;
             status.hidden = false;
+
+            // "IST" is already in the label, so drop it from the time
+            document.getElementById('last-updated-text').textContent =
+                lastUpdatedText ? lastUpdatedText.replace(/\s*IST$/, '') : '-';
+            document.getElementById('last-updated').hidden = false;
         }
 
         /**
