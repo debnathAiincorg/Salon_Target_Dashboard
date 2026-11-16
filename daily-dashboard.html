@@ -75,7 +75,7 @@
             padding: 16px 24px;
         }
 
-        /* Top row: Yearly + Monthly side by side, same height as the weekly chart */
+        /* Top row: Yearly + Weekly side by side, same height as the monthly chart */
         .chart-row {
             flex: 1;
             min-height: 0;
@@ -293,7 +293,7 @@
     <nav class="sidebar"></nav>
 
     <main class="main">
-        <!-- Top row: Yearly + Monthly charts side by side -->
+        <!-- Top row: Yearly + Weekly charts side by side -->
         <div class="chart-row">
             <!-- Yearly Chart Section -->
             <div class="chart-card">
@@ -306,26 +306,26 @@
                 </div>
             </div>
 
-            <!-- Daily Chart Section -->
+            <!-- Weekly Chart Section -->
             <div class="chart-card">
                 <div class="chart-header">
-                    <div class="chart-stats" id="daily-stats"></div>
-                    <div class="chart-title" id="chart-title">Monthly Sales: -</div>
+                    <div class="chart-stats" id="weekly-stats"></div>
+                    <div class="chart-title" id="weekly-chart-title">Weekly Sales: -</div>
                 </div>
                 <div class="chart-container">
-                    <canvas id="daily-sales-chart"></canvas>
+                    <canvas id="weekly-sales-chart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Weekly Chart Section -->
+        <!-- Daily Chart Section -->
         <div class="chart-card">
             <div class="chart-header">
-                <div class="chart-stats" id="weekly-stats"></div>
-                <div class="chart-title" id="weekly-chart-title">Weekly Sales: -</div>
+                <div class="chart-stats" id="daily-stats"></div>
+                <div class="chart-title" id="chart-title">Monthly Sales: -</div>
             </div>
             <div class="chart-container">
-                <canvas id="weekly-sales-chart"></canvas>
+                <canvas id="daily-sales-chart"></canvas>
             </div>
         </div>
     </main>
