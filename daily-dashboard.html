@@ -887,6 +887,7 @@
          */
         const SLIDE_INTERVAL_MS = 10000;  // 10 seconds per chart
         const IDLE_RESUME_MS = 30000;     // Resume after 30 s without activity, e.g. a mouse left resting on the screen
+        const MOUSE_MOVE_THRESHOLD_PX = 6;  // Smaller moves are sensor jitter, not someone using the screen
 
         const rotation = {
             slides: [],
@@ -896,7 +897,7 @@
             isUserActive: false,  // Someone is using the screen
             slideTimer: null,
             idleTimer: null,
-            lastPointer: null,    // Last mouse position, to ignore mousemove events without real movement
+            lastPointer: null,    // Mouse position {x, y} when a move last counted as activity
         };
 
         function isRotationRunning() {
@@ -964,11 +965,14 @@
          */
         function handleUserActivity(event) {
             if (event.type === 'mousemove') {
-                const position = `${event.screenX},${event.screenY}`;
-                if (position === rotation.lastPointer) {
-                    return;  // The browser re-sent the event without the mouse moving
+                // Browsers also send mousemove when the mouse has not moved (e.g. when the chart
+                // under it changes), and some mice/touchpads jitter by a pixel or two while resting.
+                // Only a real move away from the last counted position is activity.
+                const last = rotation.lastPointer;
+                if (last && Math.hypot(event.screenX - last.x, event.screenY - last.y) < MOUSE_MOVE_THRESHOLD_PX) {
+                    return;
                 }
-                rotation.lastPointer = position;
+                rotation.lastPointer = { x: event.screenX, y: event.screenY };
             }
 
             clearTimeout(rotation.idleTimer);
@@ -983,7 +987,7 @@
         function resumeAfterActivity() {
             clearTimeout(rotation.idleTimer);
             rotation.idleTimer = null;
-            rotation.lastPointer = null;
+            // lastPointer is kept: a mouse still resting in the same spot must not pause it again
             if (rotation.isUserActive) {
                 rotation.isUserActive = false;
                 scheduleNextSlide();
