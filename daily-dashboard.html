@@ -34,7 +34,7 @@
             height: 100dvh;  /* Phones: excludes the browser address bar */
             display: grid;
             grid-template-columns: 48px 1fr;
-            grid-template-rows: 44px 1fr 24px;
+            grid-template-rows: 44px 1fr 32px;
             grid-template-areas:
                 "navbar  navbar"
                 "sidebar main"
@@ -58,33 +58,123 @@
             background-color: #d4eafb;
         }
 
+        /* Status bar: rotation controls (play/pause toggle, chart tabs, progress line) */
         .statusbar {
             grid-area: statusbar;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            padding: 0 12px;
             border-top: 1px solid #b5dbf6;
             background-color: #d4eafb;
         }
 
-        /* Charts share the space left between the bars */
+        /* One button that switches between Play and Pause */
+        .rotation-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 24px;
+            padding: 0 12px 0 10px;
+            border: 1px solid #1ca0f2;
+            border-radius: 999px;
+            background-color: #fff;
+            color: #0b6aa8;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .rotation-toggle:hover {
+            background-color: #eef7fe;
+        }
+
+        .rotation-toggle:focus-visible,
+        .slide-tab:focus-visible {
+            outline: 2px solid #0b6aa8;
+            outline-offset: 2px;
+        }
+
+        .rotation-toggle svg {
+            width: 10px;
+            height: 10px;
+            fill: currentColor;
+        }
+
+        /* Only the icon for the current state is shown */
+        .rotation-toggle .icon-play,
+        .rotation-toggle.is-paused .icon-pause {
+            display: none;
+        }
+
+        .rotation-toggle.is-paused .icon-play {
+            display: block;
+        }
+
+        .slide-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .slide-tab {
+            height: 22px;
+            padding: 0 10px;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: #3d5a73;
+            font: inherit;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .slide-tab:hover {
+            background-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .slide-tab[aria-current="true"] {
+            background-color: #fff;
+            color: #000;
+            font-weight: 700;
+        }
+
+        .rotation-note {
+            margin-left: auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 12px;
+            color: #3d5a73;
+        }
+
+        /* Thin line along the top of the status bar: time left until the next chart */
+        .rotation-progress {
+            position: absolute;
+            top: -1px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: #1ca0f2;
+        }
+
+        /* One chart at a time fills the space between the bars; all three sit in the same
+           grid cell, so hidden charts keep their size and switching never resizes them */
         .main {
             grid-area: main;
             min-width: 0;
             min-height: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            display: grid;
+            grid-template: minmax(0, 1fr) / minmax(0, 1fr);
             padding: 16px 24px;
         }
 
-        /* Top row: Yearly + Weekly side by side, same height as the monthly chart */
-        .chart-row {
-            flex: 1;
-            min-height: 0;
-            display: flex;
-            gap: 12px;
-        }
-
         .chart-card {
-            flex: 1;
+            grid-area: 1 / 1;
             min-width: 0;
             min-height: 0;
             display: flex;
@@ -93,6 +183,23 @@
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             padding: 10px 16px;
+            opacity: 0;
+            visibility: hidden;
+            /* Fade out, then hide once the fade has finished */
+            transition: opacity 0.45s ease, visibility 0s linear 0.45s;
+        }
+
+        .chart-card.active {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.45s ease, visibility 0s;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .chart-card,
+            .chart-card.active {
+                transition: none;
+            }
         }
 
         /* Header: stats on the left, heading in the middle */
@@ -187,17 +294,10 @@
             }
         }
 
-        /* Tablet/phone: the three charts stack, still sharing the screen height */
+        /* Tablet/phone: tighter spacing */
         @media (max-width: 1100px) {
             .main {
-                gap: 8px;
                 padding: 10px 12px;
-            }
-
-            .chart-row {
-                flex: 2;
-                flex-direction: column;
-                gap: 8px;
             }
 
             .chart-card {
@@ -209,17 +309,8 @@
             }
         }
 
-        /* Short, wide screens (e.g. phone in landscape): all three charts side by side */
+        /* Short, wide screens (e.g. phone in landscape): compact header */
         @media (max-height: 500px) and (min-width: 601px) {
-            .main {
-                flex-direction: row;
-            }
-
-            .chart-row {
-                flex: 2;
-                flex-direction: row;
-            }
-
             .chart-header {
                 grid-template-columns: 1fr;
                 gap: 0;
@@ -274,6 +365,20 @@
                 width: 9px;
                 height: 9px;
             }
+
+            .statusbar {
+                gap: 8px;
+                padding: 0 8px;
+            }
+
+            .slide-tab {
+                padding: 0 7px;
+                font-size: 11px;
+            }
+
+            .rotation-note {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -292,34 +397,10 @@
 
     <nav class="sidebar"></nav>
 
+    <!-- Charts rotate full screen in this order: Monthly, Weekly, Yearly (see the rotation code) -->
     <main class="main">
-        <!-- Top row: Yearly + Weekly charts side by side -->
-        <div class="chart-row">
-            <!-- Yearly Chart Section -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <div class="chart-stats" id="yearly-stats"></div>
-                    <div class="chart-title" id="yearly-chart-title">Yearly Sales: -</div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="yearly-sales-chart"></canvas>
-                </div>
-            </div>
-
-            <!-- Weekly Chart Section -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <div class="chart-stats" id="weekly-stats"></div>
-                    <div class="chart-title" id="weekly-chart-title">Weekly Sales: -</div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="weekly-sales-chart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Daily Chart Section -->
-        <div class="chart-card">
+        <!-- Daily Chart Section (shown first) -->
+        <section class="chart-card active" data-slide-name="Monthly">
             <div class="chart-header">
                 <div class="chart-stats" id="daily-stats"></div>
                 <div class="chart-title" id="chart-title">Monthly Sales: -</div>
@@ -327,10 +408,41 @@
             <div class="chart-container">
                 <canvas id="daily-sales-chart"></canvas>
             </div>
-        </div>
+        </section>
+
+        <!-- Weekly Chart Section -->
+        <section class="chart-card" data-slide-name="Weekly" aria-hidden="true">
+            <div class="chart-header">
+                <div class="chart-stats" id="weekly-stats"></div>
+                <div class="chart-title" id="weekly-chart-title">Weekly Sales: -</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="weekly-sales-chart"></canvas>
+            </div>
+        </section>
+
+        <!-- Yearly Chart Section -->
+        <section class="chart-card" data-slide-name="Yearly" aria-hidden="true">
+            <div class="chart-header">
+                <div class="chart-stats" id="yearly-stats"></div>
+                <div class="chart-title" id="yearly-chart-title">Yearly Sales: -</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="yearly-sales-chart"></canvas>
+            </div>
+        </section>
     </main>
 
-    <footer class="statusbar"></footer>
+    <footer class="statusbar">
+        <div class="rotation-progress" id="rotation-progress"></div>
+        <button type="button" class="rotation-toggle" id="rotation-toggle" aria-label="Pause rotation">
+            <svg class="icon-pause" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="0" width="3" height="10"/><rect x="6" y="0" width="3" height="10"/></svg>
+            <svg class="icon-play" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0 L10 5 L1 10 Z"/></svg>
+            <span id="rotation-toggle-text">Pause</span>
+        </button>
+        <div class="slide-tabs" id="slide-tabs"></div>
+        <div class="rotation-note" id="rotation-note" aria-live="polite"></div>
+    </footer>
 </div>
 
     <script>
@@ -684,7 +796,7 @@
                 return;
             }
 
-            // Short month names, e.g. "January" -> "Jan", so 12 months fit in half the width
+            // Short month names, e.g. "January" -> "Jan", so 12 months fit on phones
             const months = data.monthly_chart_data.map(m => m.month.slice(0, 3));
             const sales = data.monthly_chart_data.map(m => m.total_sales);
             const target = data.monthly_target;
@@ -764,6 +876,151 @@
             lastData = data;
         }
 
+        /*
+         * Chart rotation: the charts take turns on screen (Monthly -> Weekly -> Yearly -> ...),
+         * SLIDE_INTERVAL_MS each. Rotation runs only when all of these are true:
+         *   - the Play/Pause toggle is on Play,
+         *   - nobody is using the screen (mouse, keyboard, touch or scroll pauses it; it resumes
+         *     when the mouse leaves the dashboard, or after IDLE_RESUME_MS without activity),
+         *   - the browser tab is visible.
+         * Each time it resumes, the current chart gets a full SLIDE_INTERVAL_MS again.
+         */
+        const SLIDE_INTERVAL_MS = 10000;  // 10 seconds per chart
+        const IDLE_RESUME_MS = 30000;     // Resume after 30 s without activity, e.g. a mouse left resting on the screen
+
+        const rotation = {
+            slides: [],
+            tabs: [],
+            index: 0,
+            isPlaying: true,      // Play/Pause toggle
+            isUserActive: false,  // Someone is using the screen
+            slideTimer: null,
+            idleTimer: null,
+            lastPointer: null,    // Last mouse position, to ignore mousemove events without real movement
+        };
+
+        function isRotationRunning() {
+            return rotation.isPlaying && !rotation.isUserActive && !document.hidden;
+        }
+
+        /**
+         * Show the chart at the given position (wraps around) and restart the timer.
+         */
+        function showSlide(index) {
+            const count = rotation.slides.length;
+            rotation.index = (index + count) % count;
+            rotation.slides.forEach((slide, i) => {
+                const isActive = i === rotation.index;
+                slide.classList.toggle('active', isActive);
+                slide.setAttribute('aria-hidden', String(!isActive));
+            });
+            rotation.tabs.forEach((tab, i) => {
+                tab.setAttribute('aria-current', String(i === rotation.index));
+            });
+            scheduleNextSlide();
+        }
+
+        /**
+         * (Re)start the countdown to the next chart, or stop it when rotation is paused.
+         */
+        function scheduleNextSlide() {
+            clearTimeout(rotation.slideTimer);
+            rotation.slideTimer = null;
+
+            const progress = document.getElementById('rotation-progress');
+            progress.style.transition = 'none';
+            progress.style.width = '0';
+
+            if (isRotationRunning()) {
+                void progress.offsetWidth;  // Apply the reset before starting the fill
+                progress.style.transition = `width ${SLIDE_INTERVAL_MS}ms linear`;
+                progress.style.width = '100%';
+                rotation.slideTimer = setTimeout(() => showSlide(rotation.index + 1), SLIDE_INTERVAL_MS);
+            }
+            renderRotationControls();
+        }
+
+        /**
+         * Update the Play/Pause button and the note on the right of the status bar.
+         */
+        function renderRotationControls() {
+            const toggle = document.getElementById('rotation-toggle');
+            toggle.classList.toggle('is-paused', !rotation.isPlaying);
+            toggle.setAttribute('aria-label', rotation.isPlaying ? 'Pause rotation' : 'Play rotation');
+            document.getElementById('rotation-toggle-text').textContent = rotation.isPlaying ? 'Pause' : 'Play';
+
+            let note = '';
+            if (!rotation.isPlaying) {
+                note = 'Rotation paused';
+            } else if (rotation.isUserActive) {
+                note = 'Paused while you use the dashboard - move the mouse away to resume';
+            }
+            document.getElementById('rotation-note').textContent = note;
+        }
+
+        /**
+         * Any activity on the dashboard pauses the rotation until the mouse leaves
+         * or the screen has been left alone for IDLE_RESUME_MS.
+         */
+        function handleUserActivity(event) {
+            if (event.type === 'mousemove') {
+                const position = `${event.screenX},${event.screenY}`;
+                if (position === rotation.lastPointer) {
+                    return;  // The browser re-sent the event without the mouse moving
+                }
+                rotation.lastPointer = position;
+            }
+
+            clearTimeout(rotation.idleTimer);
+            rotation.idleTimer = setTimeout(resumeAfterActivity, IDLE_RESUME_MS);
+
+            if (!rotation.isUserActive) {
+                rotation.isUserActive = true;
+                scheduleNextSlide();
+            }
+        }
+
+        function resumeAfterActivity() {
+            clearTimeout(rotation.idleTimer);
+            rotation.idleTimer = null;
+            rotation.lastPointer = null;
+            if (rotation.isUserActive) {
+                rotation.isUserActive = false;
+                scheduleNextSlide();
+            }
+        }
+
+        function setupRotation() {
+            rotation.slides = Array.from(document.querySelectorAll('.chart-card'));
+
+            // One tab per chart in the status bar; clicking one jumps to that chart
+            const tabList = document.getElementById('slide-tabs');
+            rotation.tabs = rotation.slides.map((slide, i) => {
+                const tab = document.createElement('button');
+                tab.type = 'button';
+                tab.className = 'slide-tab';
+                tab.textContent = slide.dataset.slideName;
+                tab.addEventListener('click', () => showSlide(i));
+                tabList.appendChild(tab);
+                return tab;
+            });
+
+            document.getElementById('rotation-toggle').addEventListener('click', () => {
+                rotation.isPlaying = !rotation.isPlaying;
+                scheduleNextSlide();
+            });
+
+            for (const type of ['mousemove', 'mousedown', 'wheel', 'keydown', 'touchstart']) {
+                document.addEventListener(type, handleUserActivity, { passive: true });
+            }
+            // Mouse moved off the dashboard (or out of the browser window): resume
+            document.documentElement.addEventListener('mouseleave', resumeAfterActivity);
+            // Pause while the tab is in the background
+            document.addEventListener('visibilitychange', scheduleNextSlide);
+
+            showSlide(0);
+        }
+
         // Start fetching data now, while the deferred chart libraries are still downloading
         const initialDataPromise = loadDashboardData();
 
@@ -772,6 +1029,7 @@
          */
         async function init() {
             console.log('Initializing dashboard...');
+            setupRotation();
 
             // Initial load
             const data = await initialDataPromise;
