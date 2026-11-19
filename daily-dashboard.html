@@ -267,6 +267,18 @@
             max-width: 100%;
         }
 
+        /* Shown in place of a chart that could not be drawn (see render) */
+        .chart-container.chart-error::after {
+            content: "Chart could not load. Retrying automatically...";
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 14px;
+        }
+
         /* Data status light, right side of the nav bar: one flashing light, green or red */
         .update-status {
             display: flex;
@@ -912,15 +924,90 @@
             document.getElementById('last-updated').hidden = false;
         }
 
+        /*
+         * Chart library safety net. Chart.js and its labels plugin come from cdn.jsdelivr.net
+         * (script tags in <head>). If that download fails, the same versions are loaded from a
+         * second CDN, so a hiccup at one CDN never leaves the charts blank.
+         */
+        const CHART_LIBRARY_FALLBACKS = [
+            { global: 'Chart', url: 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js' },
+            { global: 'ChartDataLabels', url: 'https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js' },
+        ];
+
+        function loadScript(url) {
+            return new Promise(resolve => {
+                const script = document.createElement('script');
+                script.src = url;
+                script.onload = () => resolve(true);
+                script.onerror = () => {
+                    script.remove();
+                    resolve(false);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        /**
+         * Make sure both chart libraries are loaded; returns true when they are.
+         * Order matters: the labels plugin needs Chart.js to be there first.
+         */
+        async function ensureChartLibraries() {
+            for (const lib of CHART_LIBRARY_FALLBACKS) {
+                if (!window[lib.global]) {
+                    console.warn(`${lib.global} did not load from the main CDN, trying ${lib.url}`);
+                    await loadScript(lib.url);
+                }
+            }
+            return Boolean(window.Chart && window.ChartDataLabels);
+        }
+
         /**
          * Main render function: update all charts.
+         * Each chart is drawn on its own, so one failing chart never stops the others.
+         * A chart that cannot be drawn shows a "retrying" note; returns false in that case,
+         * and the next auto-refresh tries again.
          */
-        function render(data) {
-            renderYearlyChart(data.yearly);
-            renderWeeklyChart(data.daily);
-            renderDailyChart(data.daily);
-            renderUpdateStatus(data);
+        async function render(data) {
             lastData = data;
+            await ensureChartLibraries();
+
+            const charts = [
+                ['yearly-sales-chart', () => renderYearlyChart(data.yearly)],
+                ['weekly-sales-chart', () => renderWeeklyChart(data.daily)],
+                ['daily-sales-chart', () => renderDailyChart(data.daily)],
+            ];
+            let allDrawn = true;
+            for (const [canvasId, draw] of charts) {
+                const container = document.getElementById(canvasId).parentElement;
+                try {
+                    draw();
+                    container.classList.remove('chart-error');
+                } catch (error) {
+                    allDrawn = false;
+                    container.classList.add('chart-error');
+                    console.error(`Could not draw ${canvasId}:`, error);
+                }
+            }
+            renderUpdateStatus(data);
+            return allDrawn;
+        }
+
+        /**
+         * Redraw the chart that is on screen. The browser can wipe a chart's picture
+         * (e.g. after the computer sleeps or the graphics driver resets) while the text
+         * around it stays; redrawing whenever a chart comes on screen repairs that.
+         */
+        function redrawChart(canvas) {
+            const chart = window.Chart && canvas ? Chart.getChart(canvas) : null;
+            if (chart) {
+                chart.resize();
+                chart.update('none');
+            }
+        }
+
+        function redrawVisibleChart() {
+            const slide = rotation.slides[rotation.index];
+            redrawChart(slide && slide.querySelector('canvas'));
         }
 
         /*
@@ -965,6 +1052,7 @@
             rotation.tabs.forEach((tab, i) => {
                 tab.setAttribute('aria-current', String(i === rotation.index));
             });
+            redrawVisibleChart();
             scheduleNextSlide();
         }
 
@@ -1066,8 +1154,17 @@
             }
             // Mouse moved off the dashboard (or out of the browser window): resume
             document.documentElement.addEventListener('mouseleave', resumeAfterActivity);
-            // Pause while the tab is in the background
-            document.addEventListener('visibilitychange', scheduleNextSlide);
+            // Pause while the tab is in the background; redraw the chart when it comes back
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    redrawVisibleChart();
+                }
+                scheduleNextSlide();
+            });
+            // The browser lost and then restored a chart's drawing surface: draw it again
+            for (const canvas of document.querySelectorAll('canvas')) {
+                canvas.addEventListener('contextrestored', () => redrawChart(canvas));
+            }
 
             showSlide(0);
         }
@@ -1083,9 +1180,10 @@
             setupRotation();
 
             // Initial load
+            let needsRedraw = false;  // A chart could not be drawn last time: try again on the next refresh
             const data = await initialDataPromise;
             if (data) {
-                render(data);
+                needsRedraw = !(await render(data));
                 lastDataString = JSON.stringify(data);
             } else {
                 renderUpdateStatus(null);  // No data could be loaded: show pending
@@ -1103,9 +1201,9 @@
                 const freshData = await loadDashboardData();
                 if (freshData) {
                     const freshDataString = JSON.stringify(freshData);
-                    if (freshDataString !== lastDataString) {
-                        console.log('Dashboard data changed, updating...');
-                        render(freshData);
+                    if (freshDataString !== lastDataString || needsRedraw) {
+                        console.log(needsRedraw ? 'Retrying charts that could not be drawn...' : 'Dashboard data changed, updating...');
+                        needsRedraw = !(await render(freshData));
                         lastDataString = freshDataString;
                     }
                 }
