@@ -241,7 +241,7 @@
             }
         }
 
-        /* Pages of the other dashboards (Claude API, Gold), shown inside the rotation.
+        /* Pages of the Claude API dashboard, shown inside the rotation.
            They fill the whole space between the bars, with no gap or frame around them. */
         .chart-card.embed-card {
             margin: calc(-1 * var(--main-pad-y)) calc(-1 * var(--main-pad-x));
@@ -533,8 +533,7 @@
     <nav class="sidebar"></nav>
 
     <!-- Pages rotate full screen in this order (see the rotation code):
-         Salon: Monthly, Weekly, Yearly -> Claude API: Balance, Daily usage, Monthly usage
-         -> Gold: Value matching, Full details, Compare rates -->
+         Salon: Monthly, Weekly, Yearly -> Claude API: Balance, Daily usage, Monthly usage -->
     <main class="main">
         <!-- Daily Chart Section (shown first) -->
         <section class="chart-card active" data-group="Salon" data-slide-name="Monthly">
@@ -578,17 +577,6 @@
         </section>
         <section class="chart-card embed-card" data-group="Claude API" data-embed="claude" data-slide-name="Monthly usage" aria-hidden="true">
             <iframe data-src="claude-api-dashboard/monthly.html" title="Claude API monthly usage"></iframe>
-        </section>
-
-        <!-- Gold dashboard pages (files in gold-asset-value-matching/, updated by their own workflow) -->
-        <section class="chart-card embed-card" data-group="Gold" data-embed="gold" data-slide-name="Value matching" aria-hidden="true">
-            <iframe data-src="gold-asset-value-matching/Gold_asset_value_matching.html" title="Gold value matching"></iframe>
-        </section>
-        <section class="chart-card embed-card" data-group="Gold" data-embed="gold" data-slide-name="Full details" aria-hidden="true">
-            <iframe data-src="gold-asset-value-matching/gold_all_ditails_with_table.html" title="Gold full details"></iframe>
-        </section>
-        <section class="chart-card embed-card" data-group="Gold" data-embed="gold" data-slide-name="Compare rates" aria-hidden="true">
-            <iframe data-src="gold-asset-value-matching/compair_to_other_rate.html" title="Gold compared to other rates"></iframe>
         </section>
     </main>
 
@@ -1046,7 +1034,7 @@
 
         /**
          * Nav bar, right side: "Last updated" and the status light of the dashboard on screen.
-         * Salon and Claude API have one; the Gold pages show their update time in the page itself.
+         * Salon and Claude API both have one.
          */
         function renderNavStatus() {
             const slide = rotation.slides[rotation.index];
@@ -1239,9 +1227,6 @@
                        grid-template-areas: "main" "bottom" !important; }
                 .topbar, .leftbar, #rotBtn, #fsBtn, #rotBar { display: none !important; }
                 .bottombar { background: transparent !important; border: 0 !important; }`,
-            // The nav bar here already names the page, so the Gold title bar is hidden
-            gold: `
-                nav.top-nav { display: none !important; }`,
         };
 
         function adjustEmbeddedPage(slide, frame) {

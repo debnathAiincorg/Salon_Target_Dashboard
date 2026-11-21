@@ -51,7 +51,7 @@ jobs:
             exit 0
           fi
           git commit -m "chore: update dashboard data via GitHub Actions"
-          # The Claude API and Gold workflows push to the same branch: pull their commits first
+          # The Claude API workflow pushes to the same branch: pull its commits first
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin main && git push origin HEAD:main && exit 0
             sleep $((attempt * 10))

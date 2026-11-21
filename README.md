@@ -4,25 +4,23 @@ A full-stack sales dashboard that reads live data from SharePoint via Microsoft 
 
 ## Project Structure
 
-This repository holds three dashboards. `daily-dashboard.html` shows all of them in one
+This repository holds two dashboards. `daily-dashboard.html` shows both in one
 full-screen rotation (10 seconds per page): Salon (Monthly, Weekly, Yearly) → Claude API
-(Balance, Daily usage, Monthly usage) → Gold (Value matching, Full details, Compare rates).
-The Claude API and Gold pages are shown inside it in frames; they also still work on their own.
+(Balance, Daily usage, Monthly usage). The Claude API pages are shown inside it in frames;
+they also still work on their own.
 
 ```
 Salon_Target_Dashboard/
-├── daily-dashboard.html           The combined rotation page (Salon charts + the other two dashboards)
+├── daily-dashboard.html           The combined rotation page (Salon charts + the Claude API dashboard)
 ├── sharepoint_excel.py            Salon: fetches Daily_Invoice.xlsx from SharePoint, parses it into daily totals
 ├── fetch_daily_data.py            Salon: daily/weekly metrics -> daily-dashboard-data.json
 ├── fetch_monthly_data.py          Salon: month-by-month totals -> monthly-dashboard-data.json
 ├── requirements.txt               Salon Python dependencies (used by GitHub Actions)
 ├── .env.example                   Example environment variable settings
 ├── claude-api-dashboard/          Claude API credit balance and usage (billing_dashboard.html, usage.html, monthly.html)
-├── gold-asset-value-matching/     Gold value matching (Gold_asset_value_matching.html and two more pages; see its README)
 ├── .github/workflows/
 │   ├── update-dashboard.yml       Salon data      (repository dispatch "update-dashboard")
-│   ├── claude-api-dashboard.yml   Claude API data (repository dispatch "fetch-balance")
-│   └── gold-dashboard.yml         Gold data       (repository dispatch "update-gold-dashboard", and daily at 08:00 IST)
+│   └── claude-api-dashboard.yml   Claude API data (repository dispatch "fetch-balance")
 └── docs/superpowers/
     ├── specs/2026-06-24-sales-dashboard-design.md
     └── plans/2026-06-24-sales-dashboard-implementation.md
@@ -36,10 +34,8 @@ updates the live site by itself.
 
 | Secret | Used by |
 |---|---|
-| `AZURE_TENANT_ID` | Salon and Gold (same Azure tenant) |
-| `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | Salon |
+| `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | Salon |
 | `SHAREPOINT_SHARE_LINK` | Salon |
-| `GOLD_AZURE_CLIENT_ID`, `GOLD_AZURE_CLIENT_SECRET` | Gold (its own Azure app; values from `gold-asset-value-matching/.env`) |
 | `BILLING_STORAGE_STATE` | Claude API (contents of `claude-api-dashboard/session_state.json`) |
 
 Never commit `.env` files, `session_state.json` or the Claude browser profile folders;
