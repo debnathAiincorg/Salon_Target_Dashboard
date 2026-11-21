@@ -17,7 +17,8 @@ How it works:
        on the same day replaces that day's point with the newer price.
     4. Keep the last KEEP_DAYS days and write the JSON file.
 
-Requests: the first run uses about HISTORY_DAYS + 1 requests, then 1 per run. The free
+Requests: the first run uses about HISTORY_DAYS + 1 requests, then 1 per day: once today's
+rate is saved, later runs that day make no request (set GOLD_FORCE_REFRESH=1 to fetch anyway). The free
 GoldAPI plan allows 150 per month.
 
 Needs the environment variable GOLDAPI_KEY (a GitHub secret in the workflow; for a local
@@ -116,6 +117,13 @@ def main():
 
     history = load_history()
     today = today_ist()
+
+    # Once a day is enough for a daily trend, and keeps within GoldAPI's free 150 requests
+    # a month even though the workflow starts every 15 minutes
+    have_all_days = all((today - timedelta(days=n)).isoformat() in history for n in range(HISTORY_DAYS))
+    if have_all_days and os.environ.get("GOLD_FORCE_REFRESH") != "1":
+        print(f"Today's gold rate ({today.isoformat()}) is already saved - no GoldAPI request made.")
+        return
 
     # Fill in any missing past days (only many on the first run)
     for days_ago in range(HISTORY_DAYS - 1, 0, -1):
