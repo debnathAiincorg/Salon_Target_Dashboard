@@ -275,24 +275,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     --critical-text:  #d03b3b;
     --critical-tint:  #fbecec;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      color-scheme: dark;
-      --page-plane:     #0d0d0d;
-      --surface-1:      #1a1a19;
-      --surface-2:      #232322;
-      --text-primary:   #ffffff;
-      --text-secondary: #c3c2b7;
-      --text-muted:     #898781;
-      --gridline:       #2c2c2a;
-      --border:         rgba(255,255,255,0.10);
-      --good-text:      #0ca30c;
-      --good-tint:      #123018;
-      --critical-text:  #e66767;
-      --critical-tint:  #341616;
-    }
-  }
-
   * { box-sizing: border-box; }
 
   body {
