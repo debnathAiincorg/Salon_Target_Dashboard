@@ -40,7 +40,7 @@ updates the live site by itself.
 |---|---|
 | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | Salon |
 | `SHAREPOINT_SHARE_LINK` | Salon |
-| `ANTHROPIC_ADMIN_KEY` | Claude API daily/monthly cost (an Admin API credential of the organization that owns the API credits; read-only Usage and Cost Analytics API). The Balance page has no API, so it keeps its last reading. |
+| `ANTHROPIC_ADMIN_KEY` | Claude API daily/monthly cost (an Admin API credential of the organization that owns the API credits; read-only Usage and Cost Analytics API). There is no API for the credit balance, so the Balance page shows an estimate: the balance in `claude-api-dashboard/balance_anchor.json` minus the API cost since then (update that file after buying credits). |
 | `GOLDAPI_KEY` | Gold rate (free API key from goldapi.io; about 30 requests on the first run, then 1 a day) |
 
 Never commit `.env` files, `session_state.json` or the Claude browser profile folders;

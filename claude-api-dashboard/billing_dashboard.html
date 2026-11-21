@@ -133,7 +133,7 @@
     <div class="card">
       <div class="overlay">
         <div class="brand">Claude API Credit Balance</div>
-        <div class="label">Credit balance</div>
+        <div class="label" id="balLabel">Credit balance</div>
         <div class="price-row">
           <span class="price" id="price">—</span>
           <span class="price-inr" id="priceInr"></span>
@@ -199,6 +199,9 @@
     const dir = diff > 0.004 ? "up" : diff < -0.004 ? "down" : "flat";
     const color = dir === "up" ? "var(--up)" : dir === "down" ? "var(--down)" : "var(--muted)";
     $("price").textContent = money(last);
+    // Estimated = last real balance minus the API cost since then (fetch_cost.py)
+    $("balLabel").textContent = pts[pts.length - 1].est
+      ? "Credit balance (estimated from API cost)" : "Credit balance";
     $("priceInr").textContent = inr(last);
     $("chg").className = "chg " + dir;
     $("chg").textContent = (diff >= 0 ? "+" : "−") + money(Math.abs(diff)) +
@@ -317,7 +320,7 @@
       if (raw !== lastRaw) {
         lastRaw = raw;
         ALL = JSON.parse(raw || "[]")
-          .map(p => ({ t: new Date(p.t), v: +p.balance }))
+          .map(p => ({ t: new Date(p.t), v: +p.balance, est: !!p.estimated }))
           .sort((a, b) => a.t - b.t);
         loaded = true;
         render();
