@@ -329,6 +329,67 @@
             color: #000;
         }
 
+        /* Gold Rate Trends: variant buttons (All / 18K / 22K / 24K) and source note */
+        .gold-variants {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .gold-variant {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 16px;
+            border: 1px solid #dcdcdc;
+            border-radius: 999px;
+            background-color: #fff;
+            color: #5c1a1a;
+            font: inherit;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .gold-variant:hover {
+            border-color: #c98c86;
+        }
+
+        .gold-variant[aria-pressed="true"] {
+            background-color: #fbe9e7;
+            border-color: #c98c86;
+        }
+
+        .gold-variant:focus-visible {
+            outline: 2px solid #0b6aa8;
+            outline-offset: 2px;
+        }
+
+        .variant-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+        }
+
+        /* Gold chart before its first data update */
+        .chart-container.chart-empty::after {
+            content: "Waiting for the first gold rate update...";
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 14px;
+        }
+
+        .gold-note {
+            margin-top: 4px;
+            font-size: 11px;
+            color: #888;
+            text-align: right;
+        }
+
         .chart-container {
             position: relative;
             flex: 1;
@@ -533,7 +594,8 @@
     <nav class="sidebar"></nav>
 
     <!-- Pages rotate full screen in this order (see the rotation code):
-         Salon: Monthly, Weekly, Yearly -> Claude API: Balance, Daily usage, Monthly usage -->
+         Salon: Monthly, Weekly, Yearly -> Claude API: Balance, Daily usage, Monthly usage
+         -> Gold: Rate trends -->
     <main class="main">
         <!-- Daily Chart Section (shown first) -->
         <section class="chart-card active" data-group="Salon" data-slide-name="Monthly">
@@ -578,6 +640,24 @@
         <section class="chart-card embed-card" data-group="Claude API" data-embed="claude" data-slide-name="Monthly usage" aria-hidden="true">
             <iframe data-src="claude-api-dashboard/monthly.html" title="Claude API monthly usage"></iframe>
         </section>
+
+        <!-- Gold Rate Trends (data: gold-asset-value-matching/gold-rate-data.json, updated daily by gold-rate.yml) -->
+        <section class="chart-card" data-group="Gold" data-slide-name="Rate trends" aria-hidden="true">
+            <div class="chart-header">
+                <div class="chart-stats" id="gold-stats"></div>
+                <div class="chart-title" id="gold-chart-title">Gold Rate Trends</div>
+            </div>
+            <div class="gold-variants" id="gold-variants" role="group" aria-label="Gold variant">
+                <button type="button" class="gold-variant" data-variant="all" aria-pressed="false">All Variants</button>
+                <button type="button" class="gold-variant" data-variant="18k" aria-pressed="false"><span class="variant-dot" style="background-color: #c9c418"></span>18 Karat</button>
+                <button type="button" class="gold-variant" data-variant="22k" aria-pressed="true"><span class="variant-dot" style="background-color: #4e9a1f"></span>22 Karat</button>
+                <button type="button" class="gold-variant" data-variant="24k" aria-pressed="false"><span class="variant-dot" style="background-color: #d0675a"></span>24 Karat</button>
+            </div>
+            <div class="chart-container">
+                <canvas id="gold-rate-chart"></canvas>
+            </div>
+            <div class="gold-note">International market price of gold in &#8377; per gram (source: GoldAPI.io). Jewellers' store rates, such as Tanishq's, are higher.</div>
+        </section>
     </main>
 
     <footer class="statusbar">
@@ -597,6 +677,13 @@
         const AUTO_REFRESH_INTERVAL_MS = 30000;  // 30 seconds
         const CHART_DATA_URL = "daily-dashboard-data.json";
         const YEARLY_DATA_URL = "monthly-dashboard-data.json";
+        const GOLD_DATA_URL = "gold-asset-value-matching/gold-rate-data.json";
+        // Gold Rate Trends lines, in the colours of the variant buttons
+        const GOLD_VARIANTS = {
+            '18k': { label: '18 Karat', color: '#c9c418' },
+            '22k': { label: '22 Karat', color: '#4e9a1f' },
+            '24k': { label: '24 Karat', color: '#d0675a' },
+        };
         const BAR_COLOR = '#1ca0f2';
         const VALUE_COLOR = '#000';
         const REFERENCE_LINE_COLOR = '#f17777';
@@ -610,6 +697,8 @@
         let dailyChart = null;
         let weeklyChart = null;
         let yearlyChart = null;
+        let goldChart = null;
+        let goldVariant = '22k';  // Gold Rate Trends: 'all', '18k', '22k' or '24k'
         let lastDataString = null;  // For change detection
         let lastData = null;  // Last data rendered, for re-checking the update status
 
@@ -678,8 +767,9 @@
          * Returns null only if both files fail to load.
          */
         async function loadDashboardData() {
-            const [daily, yearly] = await Promise.all([loadJson(CHART_DATA_URL), loadJson(YEARLY_DATA_URL)]);
-            return daily || yearly ? { daily, yearly } : null;
+            const [daily, yearly, gold] = await Promise.all(
+                [loadJson(CHART_DATA_URL), loadJson(YEARLY_DATA_URL), loadJson(GOLD_DATA_URL)]);
+            return daily || yearly || gold ? { daily, yearly, gold } : null;
         }
 
         /**
@@ -965,6 +1055,132 @@
             });
         }
 
+        /** Rupees, Indian digit grouping, no paise: 11560.4 -> "₹ 11,560" */
+        function formatRupees(value) {
+            return `₹ ${Math.round(value).toLocaleString('en-IN')}`;
+        }
+
+        /** "2026-10-23" -> "23 Oct" */
+        function shortDate(isoDate) {
+            const [year, month, day] = isoDate.split('-').map(Number);
+            return `${String(day).padStart(2, '0')} ${MONTH_NAMES[month - 1].slice(0, 3)}`;
+        }
+
+        /**
+         * Render the Gold Rate Trends line chart: last chart_days days of the selected variant
+         * (or all three), today's rates in the KPI cards. Hovering a day shows its rate and the
+         * difference from today's rate, e.g. "₹ 13,090 (+1,575↑)".
+         */
+        function renderGoldChart(data) {
+            if (goldChart) {
+                goldChart.destroy();
+                goldChart = null;
+            }
+
+            const history = (data && data.history) || [];
+            document.getElementById('gold-rate-chart').parentElement.classList.toggle('chart-empty', history.length === 0);
+            if (history.length === 0) {
+                renderStats('gold-stats', [
+                    ['24 Karat today (per gram)', '-'],
+                    ['22 Karat today (per gram)', '-'],
+                    ['18 Karat today (per gram)', '-'],
+                ]);
+                return;
+            }
+
+            const points = history.slice(-(data.chart_days || 30));
+            const latest = points[points.length - 1];
+            renderStats('gold-stats', ['24k', '22k', '18k'].map(key =>
+                [`${GOLD_VARIANTS[key].label} today (per gram)`, formatRupees(latest[key])]));
+
+            const shown = goldVariant === 'all' ? ['18k', '22k', '24k'] : [goldVariant];
+            const datasets = shown.map(key => ({
+                label: GOLD_VARIANTS[key].label,
+                data: points.map(p => p[key]),
+                borderColor: GOLD_VARIANTS[key].color,
+                backgroundColor: GOLD_VARIANTS[key].color,
+                borderWidth: 2,
+                pointRadius: 2.5,
+                pointHoverRadius: 5,
+                tension: 0,
+                variantKey: key,
+            }));
+
+            const ctx = document.getElementById('gold-rate-chart').getContext('2d');
+            goldChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: points.map(p => shortDate(p.date)), datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    layout: { padding: { top: 28, right: 24 } },
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: {
+                            grace: '5%',
+                            ticks: {
+                                maxTicksLimit: 8,
+                                callback: value => Math.round(value).toLocaleString('en-IN'),
+                            },
+                            grid: { color: 'rgba(0, 0, 0, 0.08)' },
+                        },
+                        x: {
+                            ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 12 },
+                            grid: { display: false },
+                        },
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#333',
+                            bodyColor: '#333',
+                            borderColor: '#ddd',
+                            borderWidth: 1,
+                            padding: 12,
+                            boxPadding: 4,
+                            usePointStyle: true,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    const diff = Math.round(value - latest[context.dataset.variantKey]);
+                                    const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '';
+                                    const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
+                                    const name = shown.length > 1 ? `${context.dataset.label}: ` : '';
+                                    return `${name}${formatRupees(value)} (${sign}${Math.abs(diff).toLocaleString('en-IN')}${arrow})`;
+                                },
+                            },
+                        },
+                        // Today's rate written next to the last point of each line
+                        datalabels: {
+                            display: context => context.dataIndex === context.dataset.data.length - 1,
+                            align: 'top',
+                            anchor: 'end',
+                            offset: 4,
+                            color: context => context.dataset.borderColor,
+                            font: { weight: 'bold', size: 13 },
+                            formatter: value => formatRupees(value),
+                        },
+                    },
+                },
+                plugins: [ChartDataLabels],
+            });
+        }
+
+        function setupGoldVariants() {
+            const buttons = document.querySelectorAll('.gold-variant');
+            for (const button of buttons) {
+                button.addEventListener('click', () => {
+                    goldVariant = button.dataset.variant;
+                    buttons.forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+                    if (window.Chart && lastData) {
+                        renderGoldChart(lastData.gold);
+                    }
+                });
+            }
+        }
+
         /**
          * Parse a "last_updated" value written by format_ist_timestamp() in the Python
          * scripts, e.g. "3 November 2026, 11:54 AM IST", into a UTC timestamp (ms).
@@ -1002,15 +1218,21 @@
          * The last update time (IST) is shown beside it.
          */
         let salonStatus = null;  // { time, isUpdated } for the Salon charts, from the last data load
+        let goldStatus = null;   // the same for the Gold Rate Trends chart
 
-        function renderUpdateStatus(data) {
-            const lastUpdatedText = data && data.daily && data.daily.last_updated;
+        /** Status from a "last_updated" text: green when it was updated today (India time). */
+        function statusFrom(lastUpdatedText) {
             const lastUpdated = parseIstTimestamp(lastUpdatedText);
-            salonStatus = {
+            return {
                 // "IST" is already in the label, so drop it from the time
                 time: lastUpdatedText ? lastUpdatedText.replace(/\s*IST$/, '') : '-',
                 isUpdated: lastUpdated !== null && lastUpdated >= lastUpdateDueTime(),
             };
+        }
+
+        function renderUpdateStatus(data) {
+            salonStatus = statusFrom(data && data.daily && data.daily.last_updated);
+            goldStatus = statusFrom(data && data.gold && data.gold.last_updated);
             renderNavStatus();
         }
 
@@ -1034,13 +1256,15 @@
 
         /**
          * Nav bar, right side: "Last updated" and the status light of the dashboard on screen.
-         * Salon and Claude API both have one.
+         * Salon, Claude API and Gold each have one.
          */
         function renderNavStatus() {
             const slide = rotation.slides[rotation.index];
             let info = null;
             if (slide && slide.dataset.group === 'Salon') {
                 info = salonStatus;
+            } else if (slide && slide.dataset.group === 'Gold') {
+                info = goldStatus;
             } else if (slide && slide.dataset.embed === 'claude') {
                 info = readClaudeStatus(slide);
             }
@@ -1109,6 +1333,7 @@
                 ['yearly-sales-chart', () => renderYearlyChart(data.yearly)],
                 ['weekly-sales-chart', () => renderWeeklyChart(data.daily)],
                 ['daily-sales-chart', () => renderDailyChart(data.daily)],
+                ['gold-rate-chart', () => renderGoldChart(data.gold)],
             ];
             let allDrawn = true;
             for (const [canvasId, draw] of charts) {
@@ -1403,6 +1628,7 @@
         async function init() {
             console.log('Initializing dashboard...');
             setupRotation();
+            setupGoldVariants();
 
             // Initial load
             let needsRedraw = false;  // A chart could not be drawn last time: try again on the next refresh

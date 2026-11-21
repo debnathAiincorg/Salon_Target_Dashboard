@@ -4,10 +4,12 @@ A full-stack sales dashboard that reads live data from SharePoint via Microsoft 
 
 ## Project Structure
 
-This repository holds two dashboards. `daily-dashboard.html` shows both in one
-full-screen rotation (10 seconds per page): Salon (Monthly, Weekly, Yearly) → Claude API
-(Balance, Daily usage, Monthly usage). The Claude API pages are shown inside it in frames;
-they also still work on their own.
+`daily-dashboard.html` shows everything in one full-screen rotation (10 seconds per page):
+Salon (Monthly, Weekly, Yearly) → Claude API (Balance, Daily usage, Monthly usage) →
+Gold (Rate trends). The Claude API pages are shown inside it in frames; they also still work
+on their own. The Gold Rate Trends chart shows the last 30 days of the 24K / 22K / 18K gold
+rate in ₹ per gram from GoldAPI.io (international market price; jewellers' store rates, such
+as Tanishq's, are higher).
 
 ```
 Salon_Target_Dashboard/
@@ -18,9 +20,11 @@ Salon_Target_Dashboard/
 ├── requirements.txt               Salon Python dependencies (used by GitHub Actions)
 ├── .env.example                   Example environment variable settings
 ├── claude-api-dashboard/          Claude API credit balance and usage (billing_dashboard.html, usage.html, monthly.html)
+├── gold-asset-value-matching/     Gold Rate Trends: fetch_gold_rate.py -> gold-rate-data.json
 ├── .github/workflows/
 │   ├── update-dashboard.yml       Salon data      (repository dispatch "update-dashboard")
-│   └── claude-api-dashboard.yml   Claude API data (repository dispatch "fetch-balance")
+│   ├── claude-api-dashboard.yml   Claude API data (repository dispatch "fetch-balance")
+│   └── gold-rate.yml              Gold rate data  (daily at 10:30 IST)
 └── docs/superpowers/
     ├── specs/2026-06-24-sales-dashboard-design.md
     └── plans/2026-06-24-sales-dashboard-implementation.md
@@ -37,6 +41,7 @@ updates the live site by itself.
 | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | Salon |
 | `SHAREPOINT_SHARE_LINK` | Salon |
 | `BILLING_STORAGE_STATE` | Claude API (contents of `claude-api-dashboard/session_state.json`) |
+| `GOLDAPI_KEY` | Gold rate (free API key from goldapi.io; about 30 requests on the first run, then 1 a day) |
 
 Never commit `.env` files, `session_state.json` or the Claude browser profile folders;
 `.gitignore` keeps them out.
