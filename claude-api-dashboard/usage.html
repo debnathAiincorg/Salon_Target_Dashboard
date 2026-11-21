@@ -138,7 +138,7 @@
 (() => {
   const POLL_MS = 30000;
   const RELOAD_MS = 300000;
-  let lastRaw = null, loaded = false, offline = false, DAYS = [], TOTAL = 0, lastT = null;
+  let lastRaw = null, loaded = false, offline = false, DAYS = [], TOTAL = 0, lastT = null, costT = null;
   let readings = [], COST = {}, mode = "cost";   // "cost" = API cost, "credit" = balance drop
 
   const $ = id => document.getElementById(id);
@@ -214,7 +214,9 @@
     }
     $("total").textContent = money(TOTAL);
     $("totalInr").textContent = inr(TOTAL);
-    if (lastT) $("updTime").textContent = fmtIST(lastT);
+    // "API cost" shows the cost data's refresh time; "Credit used" the last balance reading
+    const shownT = mode === "cost" && costT ? costT : lastT;
+    if (shownT) $("updTime").textContent = fmtIST(shownT);
 
     const W = chart.clientWidth, H = chart.clientHeight;
     const m = { l: 44, r: 16, t: 92, b: 40 };
@@ -280,16 +282,18 @@
 
   async function poll() {
     try {
-      const [bRes, cRes] = await Promise.all([
+      const [bRes, cRes, mRes] = await Promise.all([
         fetch("billing_data.json?_=" + Date.now(), { cache: "no-store" }),
         fetch("cost_data.json?_=" + Date.now(), { cache: "no-store" }).catch(() => null),
+        fetch("cost_meta.json?_=" + Date.now(), { cache: "no-store" }).catch(() => null),
       ]);
       if (!bRes.ok) throw new Error(bRes.status);
       const raw = await bRes.text();
       const costRaw = (cRes && cRes.ok) ? await cRes.text() : "{}";
+      const metaRaw = (mRes && mRes.ok) ? await mRes.text() : "{}";
       offline = false;
       setLive(true);
-      const combined = raw + "||" + costRaw;
+      const combined = raw + "||" + costRaw + "||" + metaRaw;
       if (combined !== lastRaw) {
         lastRaw = combined;
         readings = JSON.parse(raw || "[]")
@@ -297,6 +301,9 @@
           .sort((a, b) => a.t - b.t);
         lastT = readings.length ? readings[readings.length - 1].t : null;
         COST = JSON.parse(costRaw || "{}");
+        // When Anthropic last refreshed the cost data (written by fetch_cost.py)
+        const refreshed = JSON.parse(metaRaw || "{}").data_refreshed_at;
+        costT = refreshed ? new Date(refreshed) : null;
         loaded = true;
         recompute();
         render();

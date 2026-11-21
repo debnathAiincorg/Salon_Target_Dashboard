@@ -1,17 +1,23 @@
 # Claude API dashboard (files in claude-api-dashboard/).
 #
-# Started by Power Automate (GitHub connector: "Create a repository dispatch event",
-# Event Name = fetch-balance, repository = Salon_Target_Dashboard) or by the
-# "Run workflow" button.
+# Runs every hour, when Power Automate sends the repository dispatch event
+# "fetch-balance" (repository = Salon_Target_Dashboard), or with the "Run workflow"
+# button.
 #
-# Everything runs on GitHub's computers (your laptop is NOT used):
-#   1. fetch_billing.py and fetch_cost.py sign in with the session from the secret
-#      BILLING_STORAGE_STATE and save billing_data.json + cost_data.json
-#   2. the data files are committed; GitHub Pages republishes the site by itself
+# fetch_cost.py reads the daily API cost from Anthropic's official Usage and Cost
+# Analytics API with the secret ANTHROPIC_ADMIN_KEY (no browser sign-in, so nothing
+# expires) and saves cost_data.json + cost_meta.json. The files change only when
+# Anthropic has refreshed the data (within about 4 hours), so most runs commit nothing.
+# GitHub Pages republishes the site by itself after a commit.
+#
+# There is no API for the prepaid credit balance, so the Balance page keeps its last
+# reading (billing_data.json is no longer updated here).
 
 name: Update Claude API Dashboard
 
 on:
+  schedule:
+    - cron: "17 * * * *"   # every hour, at minute 17
   repository_dispatch:
     types: [fetch-balance]
   workflow_dispatch:
@@ -37,32 +43,25 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Playwright + browser
-        run: |
-          pip install playwright
-          python -m playwright install --with-deps chromium
-
-      - name: Run fetch_billing.py
-        env:
-          BILLING_STORAGE_STATE: ${{ secrets.BILLING_STORAGE_STATE }}
-        run: python fetch_billing.py
+      - name: Install the Anthropic SDK
+        run: pip install anthropic
 
       - name: Run fetch_cost.py
         env:
-          BILLING_STORAGE_STATE: ${{ secrets.BILLING_STORAGE_STATE }}
+          ANTHROPIC_ADMIN_KEY: ${{ secrets.ANTHROPIC_ADMIN_KEY }}
         run: python fetch_cost.py
 
       - name: Commit and push the data files
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add billing_data.json cost_data.json
+          git add cost_data.json cost_meta.json
           if git diff --staged --quiet; then
             echo "No changes to the Claude API data, skipping commit"
             exit 0
           fi
           git commit -m "chore: update Claude API dashboard data via GitHub Actions"
-          # The Salon workflow pushes to the same branch: pull its commits first
+          # The Salon and Gold rate workflows push to the same branch: pull their commits first
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin main && git push origin HEAD:main && exit 0
             sleep $((attempt * 10))

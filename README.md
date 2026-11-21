@@ -23,7 +23,7 @@ Salon_Target_Dashboard/
 ├── gold-asset-value-matching/     Gold Rate Trends: fetch_gold_rate.py -> gold-rate-data.json
 ├── .github/workflows/
 │   ├── update-dashboard.yml       Salon data      (repository dispatch "update-dashboard")
-│   ├── claude-api-dashboard.yml   Claude API data (repository dispatch "fetch-balance")
+│   ├── claude-api-dashboard.yml   Claude API cost (hourly, and repository dispatch "fetch-balance")
 │   └── gold-rate.yml              Gold rate data  (daily at 10:30 IST)
 └── docs/superpowers/
     ├── specs/2026-06-24-sales-dashboard-design.md
@@ -40,7 +40,7 @@ updates the live site by itself.
 |---|---|
 | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | Salon |
 | `SHAREPOINT_SHARE_LINK` | Salon |
-| `BILLING_STORAGE_STATE` | Claude API (contents of `claude-api-dashboard/session_state.json`) |
+| `ANTHROPIC_ADMIN_KEY` | Claude API daily/monthly cost (an Admin API credential of the organization that owns the API credits; read-only Usage and Cost Analytics API). The Balance page has no API, so it keeps its last reading. |
 | `GOLDAPI_KEY` | Gold rate (free API key from goldapi.io; about 30 requests on the first run, then 1 a day) |
 
 Never commit `.env` files, `session_state.json` or the Claude browser profile folders;

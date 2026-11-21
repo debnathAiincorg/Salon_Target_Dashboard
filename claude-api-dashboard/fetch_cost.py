@@ -1,123 +1,127 @@
 """
 fetch_cost.py
 -------------
-Reads your ACTUAL API cost per day from the Claude Console "Cost" page using the
-SAME login as fetch_billing.py (no API key, no account change), and merges it into
-cost_data.json (amounts in DOLLARS):
+Reads the organization's ACTUAL Claude API cost per day from Anthropic's official
+Usage and Cost Analytics API and merges it into cost_data.json (amounts in DOLLARS):
 
-    { "2026-11-18": 0.2094, "2026-11-17": 0.1367, ... }   # one entry per day
+    { "2026-11-18": 0.2094, "2026-11-17": 0.1367, ... }   # one entry per UTC day
 
-It only READS the Cost page - it does not call Claude and does not spend credits.
-Each run captures roughly the last month and MERGES it in, so history builds up
-over time and older days are never lost.
+The Daily usage and Monthly usage pages (usage.html, monthly.html) read that file.
+It also writes cost_meta.json with the time Anthropic last refreshed the data, which
+those pages show as "Last updated".
 
-Laptop mode uses the signed-in Edge profile; cloud mode uses the session from the
-GitHub Secret BILLING_STORAGE_STATE. Run:  python fetch_cost.py
+No browser and no sign-in: it uses an API key, so it does not expire like a browser login.
+It only READS cost data - it does not call Claude and does not spend credits.
+
+Key: an Admin API credential for the organization that owns the API credits (an Admin
+API key, or an organization API key of a user with the admin role), in the environment
+variable ANTHROPIC_ADMIN_KEY. On GitHub it is the secret ANTHROPIC_ADMIN_KEY; for a
+local run put  ANTHROPIC_ADMIN_KEY=...  in a .env file next to this script (git ignores
+.env files - never commit the key).
+
+Data freshness: Anthropic refreshes this data within about 4 hours (at most 24), so
+today's cost fills in during the day. The files are only rewritten when the data has
+changed, so running this often does not create a commit every time.
+
+Run:  python fetch_cost.py
 """
 import json
 import os
 import sys
-import time
-from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# reuse the browser/login helpers from the balance script
-import fetch_billing as fb
+import anthropic
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except ImportError:
+    pass  # optional; GitHub Actions passes the key as an environment variable
 
 HERE = Path(__file__).resolve().parent
 DATA_FILE = HERE / "cost_data.json"
-COST_URL = "https://platform.claude.com/cost"
-CAPTURE_WAIT_SECONDS = 20
+META_FILE = HERE / "cost_meta.json"
+LOOKBACK_DAYS = 30   # the API allows at most 31 days per request
 
 
-def _capture_daily_rows(page) -> list:
-    """Load the Cost page and grab the daily (1d) cost breakdown it fetches."""
-    grabbed = {"rows": None}
-
-    def on_response(resp):
-        try:
-            if ("analytics/cost" in resp.url and "time_bucket_width=1d" in resp.url
-                    and resp.status == 200):
-                data = resp.json().get("data", [])
-                # keep the richest response if several arrive
-                if grabbed["rows"] is None or len(data) > len(grabbed["rows"]):
-                    grabbed["rows"] = data
-        except Exception:
-            pass
-
-    page.on("response", on_response)
-    page.goto(COST_URL, wait_until="domcontentloaded")
-    deadline = time.time() + CAPTURE_WAIT_SECONDS
-    while time.time() < deadline:
-        if grabbed["rows"] is not None:
-            page.wait_for_timeout(1500)  # let a richer response replace it
-            break
-        page.wait_for_timeout(1000)
-    return grabbed["rows"] or []
+def load_json(path, default):
+    if not path.exists():
+        return default
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
 
 
-def fetch_cost_rows() -> list:
-    from playwright.sync_api import sync_playwright
-
-    state = os.environ.get("BILLING_STORAGE_STATE")
-    with sync_playwright() as p:
-        if state:  # CLOUD
-            browser = p.chromium.launch(headless=True)
-            ctx = browser.new_context(storage_state=json.loads(state),
-                                      viewport={"width": 1280, "height": 900})
-            rows = _capture_daily_rows(ctx.new_page())
-            browser.close()
-        else:      # LAPTOP (Edge profile)
-            if not fb.PROFILE_DIR.exists():
-                raise fb.NotLoggedIn("Not signed in yet.")
-            fb.stop_profile_edge()
-            ctx = fb.open_edge(p, headless=True)
-            page = ctx.pages[0] if ctx.pages else ctx.new_page()
-            rows = _capture_daily_rows(page)
-            ctx.close()
-    return rows
+def write_if_changed(path, data, indent):
+    text = json.dumps(data, indent=indent, sort_keys=True) + "\n"
+    if path.exists() and path.read_text(encoding="utf-8") == text:
+        return False
+    path.write_text(text, encoding="utf-8")
+    return True
 
 
-def load_existing() -> dict:
-    if DATA_FILE.exists():
-        raw = DATA_FILE.read_text(encoding="utf-8").strip()
-        if raw:
-            return json.loads(raw)
-    return {}
+def fetch_daily_cost(client, start):
+    """Dollars per UTC day from `start` until now, and the data's refresh time."""
+    page = client.beta.organization.analytics.cost.list(
+        starting_at=start,
+        ending_at=datetime.now(timezone.utc),
+        time_bucket_width="1d",
+        order_by="time",
+        order="asc",
+        limit=100,
+    )
+    refreshed_at = page.data_refreshed_at
+    daily = {}
+    for row in page:  # iterating fetches the following pages too
+        day = row.starting_at.astimezone(timezone.utc).date().isoformat()
+        # amount is a decimal string in cents, e.g. "41280.000000" = $412.80
+        daily[day] = daily.get(day, 0.0) + float(row.cost.amount) / 100
+    return daily, refreshed_at
 
 
 def main():
+    key = os.environ.get("ANTHROPIC_ADMIN_KEY")
+    if not key:
+        sys.exit("ANTHROPIC_ADMIN_KEY is not set (GitHub secret, or a .env file next to this script)")
+
+    client = anthropic.Anthropic(api_key=key)
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = today - timedelta(days=LOOKBACK_DAYS)
+
     try:
-        rows = fetch_cost_rows()
-    except fb.NotLoggedIn as e:
-        print(f"{e} Cost not updated this run.", flush=True)
+        daily, refreshed_at = fetch_daily_cost(client, start)
+    except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as e:
+        sys.exit(f"The key was refused ({e.status_code}). The cost data needs an Admin API credential of the "
+                 "organization that owns the API credits: an Admin API key (sk-ant-admin...) or an "
+                 f"organization API key of a user with the admin role.\nDetails: {e.message}")
+    except anthropic.NotFoundError as e:
+        sys.exit(f"The cost endpoint was not found for this organization (404): {e.message}")
+
+    if refreshed_at is None:
+        print("Anthropic has no cost data for this period yet - nothing changed.")
         return
 
-    per_day = defaultdict(float)
-    for r in rows:
-        day = r["starting_at"][:10]
-        per_day[day] += float(r["cost"]["amount"]) / 100.0   # cents -> dollars
+    # Merge: inside the fetched range the API is the source of truth for every day up to
+    # the refresh time (a day missing from the reply had no cost); older days are kept.
+    costs = load_json(DATA_FILE, {})
+    refreshed_day = refreshed_at.astimezone(timezone.utc).date().isoformat()
+    for day in list(costs):
+        if start.date().isoformat() <= day < refreshed_day and day not in daily:
+            del costs[day]
+    for day, dollars in daily.items():
+        costs[day] = round(dollars, 6)
 
-    if not per_day:
-        print("No cost rows captured this run; leaving cost_data.json unchanged.", flush=True)
-        return
+    changed = write_if_changed(DATA_FILE, costs, indent=1)
+    meta = {
+        "data_refreshed_at": refreshed_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "source": "Anthropic Usage and Cost Analytics API",
+    }
+    changed = write_if_changed(META_FILE, meta, indent=2) or changed
 
-    data = load_existing()
-    for day, amt in per_day.items():
-        data[day] = round(amt, 6)            # overwrite the captured days, keep older ones
-    data = {d: data[d] for d in sorted(data)}
-
-    tmp = DATA_FILE.with_name(DATA_FILE.name + ".tmp")
-    tmp.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
-    os.replace(tmp, DATA_FILE)
-
-    by_month = defaultdict(float)
-    for d, a in data.items():
-        by_month[d[:7]] += a
-    print(f"Saved {len(data)} days to {DATA_FILE.name}")
-    for m in sorted(by_month):
-        print(f"  {m}: ${by_month[m]:.2f}")
-    print(f"Total: ${sum(by_month.values()):.2f}")
+    month = today.strftime("%Y-%m")
+    month_total = sum(v for d, v in costs.items() if d.startswith(month))
+    print(f"{len(daily)} days with cost in the last {LOOKBACK_DAYS} days; this month so far ${month_total:,.2f}; "
+          f"data refreshed at {meta['data_refreshed_at']}; files {'updated' if changed else 'unchanged'}.")
 
 
 if __name__ == "__main__":
