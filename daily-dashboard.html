@@ -207,7 +207,9 @@
             min-height: 0;
             display: grid;
             grid-template: minmax(0, 1fr) / minmax(0, 1fr);
-            padding: 16px 24px;
+            --main-pad-y: 16px;
+            --main-pad-x: 24px;
+            padding: var(--main-pad-y) var(--main-pad-x);
         }
 
         .chart-card {
@@ -239,9 +241,13 @@
             }
         }
 
-        /* Pages of the other dashboards (Claude API, Gold), shown inside the rotation */
+        /* Pages of the other dashboards (Claude API, Gold), shown inside the rotation.
+           They fill the whole space between the bars, with no gap or frame around them. */
         .chart-card.embed-card {
+            margin: calc(-1 * var(--main-pad-y)) calc(-1 * var(--main-pad-x));
             padding: 0;
+            border: 0;
+            border-radius: 0;
             overflow: hidden;
         }
 
@@ -251,7 +257,6 @@
             width: 100%;
             min-height: 0;
             border: 0;
-            border-radius: 8px;
         }
 
         /* Left of the nav bar: the dashboard and page on screen */
@@ -266,10 +271,10 @@
             color: #0b4f7a;
         }
 
-        /* The Salon data status belongs to the Salon charts only */
-        .app:not([data-group="Salon"]) .last-updated,
-        .app:not([data-group="Salon"]) .update-status {
-            display: none !important;
+        /* Hidden when the page on screen has no status to show (see renderNavStatus) */
+        .last-updated[hidden],
+        .update-status[hidden] {
+            display: none;
         }
 
         /* Header: heading centred on top, then a row of three KPI cards */
@@ -402,7 +407,8 @@
         /* Tablet/phone: tighter spacing */
         @media (max-width: 1100px) {
             .main {
-                padding: 10px 12px;
+                --main-pad-y: 10px;
+                --main-pad-x: 12px;
             }
 
             .chart-card {
@@ -565,24 +571,24 @@
 
         <!-- Claude API dashboard pages (files in claude-api-dashboard/, updated by their own workflow) -->
         <section class="chart-card embed-card" data-group="Claude API" data-embed="claude" data-slide-name="Balance" aria-hidden="true">
-            <iframe src="claude-api-dashboard/billing_dashboard.html" title="Claude API credit balance"></iframe>
+            <iframe data-src="claude-api-dashboard/billing_dashboard.html" title="Claude API credit balance"></iframe>
         </section>
         <section class="chart-card embed-card" data-group="Claude API" data-embed="claude" data-slide-name="Daily usage" aria-hidden="true">
-            <iframe src="claude-api-dashboard/usage.html" title="Claude API daily usage"></iframe>
+            <iframe data-src="claude-api-dashboard/usage.html" title="Claude API daily usage"></iframe>
         </section>
         <section class="chart-card embed-card" data-group="Claude API" data-embed="claude" data-slide-name="Monthly usage" aria-hidden="true">
-            <iframe src="claude-api-dashboard/monthly.html" title="Claude API monthly usage"></iframe>
+            <iframe data-src="claude-api-dashboard/monthly.html" title="Claude API monthly usage"></iframe>
         </section>
 
         <!-- Gold dashboard pages (files in gold-asset-value-matching/, updated by their own workflow) -->
         <section class="chart-card embed-card" data-group="Gold" data-embed="gold" data-slide-name="Value matching" aria-hidden="true">
-            <iframe src="gold-asset-value-matching/Gold_asset_value_matching.html" title="Gold value matching"></iframe>
+            <iframe data-src="gold-asset-value-matching/Gold_asset_value_matching.html" title="Gold value matching"></iframe>
         </section>
         <section class="chart-card embed-card" data-group="Gold" data-embed="gold" data-slide-name="Full details" aria-hidden="true">
-            <iframe src="gold-asset-value-matching/gold_all_ditails_with_table.html" title="Gold full details"></iframe>
+            <iframe data-src="gold-asset-value-matching/gold_all_ditails_with_table.html" title="Gold full details"></iframe>
         </section>
         <section class="chart-card embed-card" data-group="Gold" data-embed="gold" data-slide-name="Compare rates" aria-hidden="true">
-            <iframe src="gold-asset-value-matching/compair_to_other_rate.html" title="Gold compared to other rates"></iframe>
+            <iframe data-src="gold-asset-value-matching/compair_to_other_rate.html" title="Gold compared to other rates"></iframe>
         </section>
     </main>
 
@@ -1007,21 +1013,61 @@
          * red "Not Updated" from midnight until the next data refresh.
          * The last update time (IST) is shown beside it.
          */
+        let salonStatus = null;  // { time, isUpdated } for the Salon charts, from the last data load
+
         function renderUpdateStatus(data) {
-            const status = document.getElementById('update-status');
             const lastUpdatedText = data && data.daily && data.daily.last_updated;
             const lastUpdated = parseIstTimestamp(lastUpdatedText);
-            const isUpdated = lastUpdated !== null && lastUpdated >= lastUpdateDueTime();
+            salonStatus = {
+                // "IST" is already in the label, so drop it from the time
+                time: lastUpdatedText ? lastUpdatedText.replace(/\s*IST$/, '') : '-',
+                isUpdated: lastUpdated !== null && lastUpdated >= lastUpdateDueTime(),
+            };
+            renderNavStatus();
+        }
 
-            status.className = `update-status ${isUpdated ? 'updated' : 'pending'}`;
-            document.getElementById('update-status-text').textContent = isUpdated ? 'Updated' : 'Not Updated';
-            status.title = `Last updated: ${lastUpdatedText || '-'}`;
-            status.hidden = false;
+        /**
+         * The Claude API pages keep their own "Last updated" time and status light (their top
+         * bar is hidden inside the rotation); read them so the nav bar can show them instead.
+         */
+        function readClaudeStatus(slide) {
+            try {
+                const doc = slide.querySelector('iframe').contentDocument;
+                const time = doc.getElementById('updTime');
+                const light = doc.getElementById('status');
+                if (!time || !light) {
+                    return null;
+                }
+                return { time: time.textContent.trim() || '-', isUpdated: light.classList.contains('ok') };
+            } catch (error) {
+                return null;
+            }
+        }
 
-            // "IST" is already in the label, so drop it from the time
-            document.getElementById('last-updated-text').textContent =
-                lastUpdatedText ? lastUpdatedText.replace(/\s*IST$/, '') : '-';
-            document.getElementById('last-updated').hidden = false;
+        /**
+         * Nav bar, right side: "Last updated" and the status light of the dashboard on screen.
+         * Salon and Claude API have one; the Gold pages show their update time in the page itself.
+         */
+        function renderNavStatus() {
+            const slide = rotation.slides[rotation.index];
+            let info = null;
+            if (slide && slide.dataset.group === 'Salon') {
+                info = salonStatus;
+            } else if (slide && slide.dataset.embed === 'claude') {
+                info = readClaudeStatus(slide);
+            }
+
+            const status = document.getElementById('update-status');
+            const lastUpdated = document.getElementById('last-updated');
+            status.hidden = !info;
+            lastUpdated.hidden = !info;
+            if (!info) {
+                return;
+            }
+            status.className = `update-status ${info.isUpdated ? 'updated' : 'pending'}`;
+            document.getElementById('update-status-text').textContent = info.isUpdated ? 'Updated' : 'Not Updated';
+            status.title = `Last updated: ${info.time}`;
+            document.getElementById('last-updated-text').textContent = info.time;
         }
 
         /*
@@ -1158,6 +1204,7 @@
             const group = slide.dataset.group;
             document.querySelector('.app').dataset.group = group;
             document.getElementById('dashboard-name').textContent = `${group} · ${slide.dataset.slideName}`;
+            renderNavStatus();
             // Keep the active tab visible when the tab strip is scrolled (narrow screens)
             const tab = rotation.tabs[rotation.index];
             if (tab) {
@@ -1185,11 +1232,16 @@
          *     embedded page pauses the rotation like the Salon charts do.
          */
         const EMBED_STYLES = {
+            // Top bar (its "Last updated" and status light move to this page's nav bar) and
+            // left bar hidden; the bottom bar keeps its controls but loses its bar background
             claude: `
-                .app { grid-template-columns: 1fr !important; grid-template-areas: "top" "main" "bottom" !important; }
-                .leftbar, .topbar .nav, #rotBtn, #fsBtn, #rotBar { display: none !important; }`,
+                .app { grid-template-columns: 1fr !important; grid-template-rows: 1fr auto !important;
+                       grid-template-areas: "main" "bottom" !important; }
+                .topbar, .leftbar, #rotBtn, #fsBtn, #rotBar { display: none !important; }
+                .bottombar { background: transparent !important; border: 0 !important; }`,
+            // The nav bar here already names the page, so the Gold title bar is hidden
             gold: `
-                nav.top-nav .nav-links { display: none !important; }`,
+                nav.top-nav { display: none !important; }`,
         };
 
         function adjustEmbeddedPage(slide, frame) {
@@ -1205,6 +1257,16 @@
                 for (const type of ['mousemove', 'mousedown', 'wheel', 'keydown', 'touchstart']) {
                     doc.addEventListener(type, handleUserActivity, { passive: true });
                 }
+                // Claude API: show its "Last updated" and status light in the nav bar, and
+                // follow them when the page refreshes its data
+                if (slide.dataset.embed === 'claude') {
+                    const watched = ['updTime', 'status'].map(id => doc.getElementById(id)).filter(Boolean);
+                    const observer = new MutationObserver(renderNavStatus);
+                    for (const element of watched) {
+                        observer.observe(element, { attributes: true, childList: true, characterData: true, subtree: true });
+                    }
+                    renderNavStatus();
+                }
             } catch (error) {
                 console.warn('Could not adjust embedded page', frame.src, error);
             }
@@ -1215,11 +1277,9 @@
                 const frame = slide.querySelector('iframe');
                 // On every load, including the pages' own reloads
                 frame.addEventListener('load', () => adjustEmbeddedPage(slide, frame));
-                // In case it finished loading before this code ran
-                if (frame.contentDocument && frame.contentDocument.readyState === 'complete'
-                        && frame.contentDocument.URL !== 'about:blank') {
-                    adjustEmbeddedPage(slide, frame);
-                }
+                // Load a fresh copy: browsers keep GitHub Pages files for up to 10 minutes,
+                // and pages inside frames are often not refreshed even by Ctrl+F5
+                frame.src = `${frame.dataset.src}?v=${Date.now()}`;
             }
         }
 
