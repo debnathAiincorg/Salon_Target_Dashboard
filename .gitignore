@@ -15,3 +15,14 @@ env/
 *.xlsx
 .stubs/
 .vfsmeta/
+
+# Merged dashboards: old per-project git history kept locally only
+.git-old-repo/
+# Claude API dashboard: browser logins and session - must NEVER be uploaded
+.edge_billing_profile/
+.billing_browser_profile/
+session_state.json
+admin_key.txt
+# Gold dashboard: debug screenshot from a failed Tanishq fetch
+debug_screenshot.png
+.claude/

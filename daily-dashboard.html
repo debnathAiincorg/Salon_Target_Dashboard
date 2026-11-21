@@ -117,9 +117,44 @@
             display: block;
         }
 
+        /* Tabs grouped by dashboard; scroll sideways if the screen is too narrow for all */
         .slide-tabs {
             display: flex;
-            gap: 4px;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .slide-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-group {
+            display: flex;
+            flex-shrink: 0;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .tab-group + .tab-group {
+            padding-left: 8px;
+            border-left: 1px solid #a9d1ef;
+        }
+
+        .tab-group-label {
+            margin-right: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: #0b4f7a;
+            white-space: nowrap;
+        }
+
+        .slide-tab {
+            white-space: nowrap;
         }
 
         .slide-tab {
@@ -202,6 +237,39 @@
             .chart-card.active {
                 transition: none;
             }
+        }
+
+        /* Pages of the other dashboards (Claude API, Gold), shown inside the rotation */
+        .chart-card.embed-card {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .embed-card iframe {
+            display: block;
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            border: 0;
+            border-radius: 8px;
+        }
+
+        /* Left of the nav bar: the dashboard and page on screen */
+        .dashboard-name {
+            margin-right: auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 700;
+            color: #0b4f7a;
+        }
+
+        /* The Salon data status belongs to the Salon charts only */
+        .app:not([data-group="Salon"]) .last-updated,
+        .app:not([data-group="Salon"]) .update-status {
+            display: none !important;
         }
 
         /* Header: heading centred on top, then a row of three KPI cards */
@@ -429,8 +497,13 @@
                 font-size: 11px;
             }
 
-            .rotation-note {
+            .rotation-note,
+            .tab-group-label {
                 display: none;
+            }
+
+            .dashboard-name {
+                font-size: 12px;
             }
         }
     </style>
@@ -438,7 +511,10 @@
 <body>
 <div class="app">
     <header class="navbar">
-        <!-- Data status: last update time, then green "Updated" or red "Not Updated" (see renderUpdateStatus) -->
+        <!-- Which dashboard and page is on screen, e.g. "Salon · Monthly" (see showSlide) -->
+        <div class="dashboard-name" id="dashboard-name"></div>
+        <!-- Salon data status: last update time, then green "Updated" or red "Not Updated" (see renderUpdateStatus).
+             Shown only on the Salon charts; the other dashboards show their own status. -->
         <div class="last-updated" id="last-updated" hidden>
             Last updated (Indian time): <b id="last-updated-text"></b>
         </div>
@@ -450,10 +526,12 @@
 
     <nav class="sidebar"></nav>
 
-    <!-- Charts rotate full screen in this order: Monthly, Weekly, Yearly (see the rotation code) -->
+    <!-- Pages rotate full screen in this order (see the rotation code):
+         Salon: Monthly, Weekly, Yearly -> Claude API: Balance, Daily usage, Monthly usage
+         -> Gold: Value matching, Full details, Compare rates -->
     <main class="main">
         <!-- Daily Chart Section (shown first) -->
-        <section class="chart-card active" data-slide-name="Monthly">
+        <section class="chart-card active" data-group="Salon" data-slide-name="Monthly">
             <div class="chart-header">
                 <div class="chart-stats" id="daily-stats"></div>
                 <div class="chart-title" id="chart-title">Monthly Sales: -</div>
@@ -464,7 +542,7 @@
         </section>
 
         <!-- Weekly Chart Section -->
-        <section class="chart-card" data-slide-name="Weekly" aria-hidden="true">
+        <section class="chart-card" data-group="Salon" data-slide-name="Weekly" aria-hidden="true">
             <div class="chart-header">
                 <div class="chart-stats" id="weekly-stats"></div>
                 <div class="chart-title" id="weekly-chart-title">Weekly Sales: -</div>
@@ -475,7 +553,7 @@
         </section>
 
         <!-- Yearly Chart Section -->
-        <section class="chart-card" data-slide-name="Yearly" aria-hidden="true">
+        <section class="chart-card" data-group="Salon" data-slide-name="Yearly" aria-hidden="true">
             <div class="chart-header">
                 <div class="chart-stats" id="yearly-stats"></div>
                 <div class="chart-title" id="yearly-chart-title">Yearly Sales: -</div>
@@ -483,6 +561,28 @@
             <div class="chart-container">
                 <canvas id="yearly-sales-chart"></canvas>
             </div>
+        </section>
+
+        <!-- Claude API dashboard pages (files in claude-api-dashboard/, updated by their own workflow) -->
+        <section class="chart-card embed-card" data-group="Claude API" data-embed="claude" data-slide-name="Balance" aria-hidden="true">
+            <iframe src="claude-api-dashboard/billing_dashboard.html" title="Claude API credit balance"></iframe>
+        </section>
+        <section class="chart-card embed-card" data-group="Claude API" data-embed="claude" data-slide-name="Daily usage" aria-hidden="true">
+            <iframe src="claude-api-dashboard/usage.html" title="Claude API daily usage"></iframe>
+        </section>
+        <section class="chart-card embed-card" data-group="Claude API" data-embed="claude" data-slide-name="Monthly usage" aria-hidden="true">
+            <iframe src="claude-api-dashboard/monthly.html" title="Claude API monthly usage"></iframe>
+        </section>
+
+        <!-- Gold dashboard pages (files in gold-asset-value-matching/, updated by their own workflow) -->
+        <section class="chart-card embed-card" data-group="Gold" data-embed="gold" data-slide-name="Value matching" aria-hidden="true">
+            <iframe src="gold-asset-value-matching/Gold_asset_value_matching.html" title="Gold value matching"></iframe>
+        </section>
+        <section class="chart-card embed-card" data-group="Gold" data-embed="gold" data-slide-name="Full details" aria-hidden="true">
+            <iframe src="gold-asset-value-matching/gold_all_ditails_with_table.html" title="Gold full details"></iframe>
+        </section>
+        <section class="chart-card embed-card" data-group="Gold" data-embed="gold" data-slide-name="Compare rates" aria-hidden="true">
+            <iframe src="gold-asset-value-matching/compair_to_other_rate.html" title="Gold compared to other rates"></iframe>
         </section>
     </main>
 
@@ -1052,8 +1152,75 @@
             rotation.tabs.forEach((tab, i) => {
                 tab.setAttribute('aria-current', String(i === rotation.index));
             });
+
+            // Nav bar: which dashboard and page is on screen
+            const slide = rotation.slides[rotation.index];
+            const group = slide.dataset.group;
+            document.querySelector('.app').dataset.group = group;
+            document.getElementById('dashboard-name').textContent = `${group} · ${slide.dataset.slideName}`;
+            // Keep the active tab visible when the tab strip is scrolled (narrow screens)
+            const tab = rotation.tabs[rotation.index];
+            if (tab) {
+                const list = tab.closest('.slide-tabs');
+                const listBox = list.getBoundingClientRect();
+                const tabBox = tab.getBoundingClientRect();
+                if (tabBox.left < listBox.left) {
+                    list.scrollLeft -= listBox.left - tabBox.left + 8;
+                } else if (tabBox.right > listBox.right) {
+                    list.scrollLeft += tabBox.right - listBox.right + 8;
+                }
+            }
+
             redrawVisibleChart();
             scheduleNextSlide();
+        }
+
+        /*
+         * Pages of the other dashboards are shown in iframes. They come from this same site,
+         * so this page can adjust them each time one loads (they also reload themselves to
+         * pick up new data):
+         *   - hide what this page already provides: their page links, their own rotate and
+         *     fullscreen buttons, and the Claude API left sidebar;
+         *   - pass mouse/keyboard/touch activity inside them to the rotation, so using an
+         *     embedded page pauses the rotation like the Salon charts do.
+         */
+        const EMBED_STYLES = {
+            claude: `
+                .app { grid-template-columns: 1fr !important; grid-template-areas: "top" "main" "bottom" !important; }
+                .leftbar, .topbar .nav, #rotBtn, #fsBtn, #rotBar { display: none !important; }`,
+            gold: `
+                nav.top-nav .nav-links { display: none !important; }`,
+        };
+
+        function adjustEmbeddedPage(slide, frame) {
+            try {
+                const doc = frame.contentDocument;
+                if (!doc || !doc.head || doc.getElementById('rotation-embed-style')) {
+                    return;  // Not loaded yet, or already adjusted
+                }
+                const style = doc.createElement('style');
+                style.id = 'rotation-embed-style';
+                style.textContent = EMBED_STYLES[slide.dataset.embed] || '';
+                doc.head.appendChild(style);
+                for (const type of ['mousemove', 'mousedown', 'wheel', 'keydown', 'touchstart']) {
+                    doc.addEventListener(type, handleUserActivity, { passive: true });
+                }
+            } catch (error) {
+                console.warn('Could not adjust embedded page', frame.src, error);
+            }
+        }
+
+        function setupEmbeds() {
+            for (const slide of document.querySelectorAll('.embed-card')) {
+                const frame = slide.querySelector('iframe');
+                // On every load, including the pages' own reloads
+                frame.addEventListener('load', () => adjustEmbeddedPage(slide, frame));
+                // In case it finished loading before this code ran
+                if (frame.contentDocument && frame.contentDocument.readyState === 'complete'
+                        && frame.contentDocument.URL !== 'about:blank') {
+                    adjustEmbeddedPage(slide, frame);
+                }
+            }
         }
 
         /**
@@ -1132,17 +1299,30 @@
         function setupRotation() {
             rotation.slides = Array.from(document.querySelectorAll('.chart-card'));
 
-            // One tab per chart in the status bar; clicking one jumps to that chart
+            // One tab per page in the status bar, grouped by dashboard; clicking one jumps to it
             const tabList = document.getElementById('slide-tabs');
+            const groups = new Map();
             rotation.tabs = rotation.slides.map((slide, i) => {
+                let group = groups.get(slide.dataset.group);
+                if (!group) {
+                    group = document.createElement('div');
+                    group.className = 'tab-group';
+                    const label = document.createElement('span');
+                    label.className = 'tab-group-label';
+                    label.textContent = slide.dataset.group;
+                    group.appendChild(label);
+                    tabList.appendChild(group);
+                    groups.set(slide.dataset.group, group);
+                }
                 const tab = document.createElement('button');
                 tab.type = 'button';
                 tab.className = 'slide-tab';
                 tab.textContent = slide.dataset.slideName;
                 tab.addEventListener('click', () => showSlide(i));
-                tabList.appendChild(tab);
+                group.appendChild(tab);
                 return tab;
             });
+            setupEmbeds();
 
             document.getElementById('rotation-toggle').addEventListener('click', () => {
                 rotation.isPlaying = !rotation.isPlaying;

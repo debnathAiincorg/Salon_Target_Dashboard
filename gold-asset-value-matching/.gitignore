@@ -1,0 +1,11 @@
+# Secrets - never commit the real .env (contains Azure app credentials).
+# .env.example has no real values, so it's fine to keep tracked.
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Debug screenshot saved by fetch_tanishq_gold_rate.py when the Cloudflare
+# wait times out - only useful locally/in a failed run's uploaded artifact.
+debug_screenshot.png

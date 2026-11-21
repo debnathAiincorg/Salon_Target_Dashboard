@@ -1,0 +1,402 @@
+<!doctype html>
+<!-- Claude API credit balance dashboard -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credit Balance Tracker</title>
+<style>
+  :root {
+    --bg: #eef5fc; --panel: #ffffff; --border: #cdddee;
+    --text: #1f2a37; --muted: #5b6b7b; --grid: #e6eef6;
+    --up: #15a35b; --down: #e5484d; --accent: #2f6fb0;
+    --barbg: #d7e9fb;   /* light-blue nav / sidebar / status bars */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    overflow: hidden;                 /* bars stay fixed to the screen */
+  }
+  /* 3 bars around the chart: top, left, bottom */
+  .app { display: grid; gap: 0; margin: 0; padding: 0; height: 100vh;
+    grid-template-columns: 61px 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: "top top" "left main" "bottom bottom"; }
+  .bar { background: var(--barbg); border: 1px solid var(--border); border-radius: 0; }
+  .topbar { grid-area: top; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 14px 20px; }
+  .topbar .price { font-size: 30px; }
+  .leftbar { grid-area: left; }
+  .mainarea { grid-area: main; }
+  .bottombar { grid-area: bottom; padding: 10px 16px; color: var(--muted); font-size: 12px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand { font-size: 18px; font-weight: 600; }
+  /* page nav in the top bar */
+  .nav { display: flex; gap: 6px; }
+  .navlink { text-decoration: none; color: var(--muted); font-size: 13px; font-weight: 600;
+    padding: 6px 13px; border-radius: 6px; border: 1px solid transparent; }
+  .navlink:hover { color: var(--text); border-color: var(--border); }
+  .navlink.on { color: var(--accent); background: #fff; border-color: var(--border); }
+  /* balance block drawn inside the chart, top-left (stock style) */
+  .card { position: relative; }
+  .overlay { position: absolute; top: 16px; left: 20px; right: 20px; z-index: 2; pointer-events: none;
+    text-shadow: 0 0 6px #fff, 0 0 6px #fff, 0 0 6px #fff; }
+  .overlay .brand { font-size: 15px; font-weight: 600; margin-bottom: 6px; text-align: center; }
+  .overlay .price { font-size: 30px; line-height: 1.1; }
+  .overlay .price-inr { font-size: 20px; font-weight: 600; color: var(--accent); }
+  .overlay .price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .overlay .chg { margin-top: 0; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 0; padding: 20px;
+    height: 100%; display: flex; flex-direction: column; }
+  .head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
+  .label { color: var(--muted); font-size: 13px; }
+  .price { font-size: 40px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+  .chg { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .chg.up { color: var(--up); } .chg.down { color: var(--down); } .chg.flat { color: var(--muted); }
+  .ranges { display: flex; gap: 4px; }
+  .ranges.vert { flex-direction: column; gap: 6px; }
+  .ranges button {
+    background: #fff; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; cursor: pointer; text-align: left;
+  }
+  .ranges button:hover { color: var(--text); border-color: var(--accent); }
+  .ranges button.on { color: var(--accent); background: #fff; border-color: var(--accent); font-weight: 600; }
+  /* auto-rotate kiosk buttons in the bottom bar */
+  .kioskbtn { display: inline-flex; align-items: center; gap: 7px; background: #fff; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 13px; font: inherit; font-size: 12px;
+    font-weight: 600; cursor: pointer; }
+  .kioskbtn:hover { color: var(--text); border-color: var(--accent); }
+  .kioskbtn.on { color: var(--accent); border-color: var(--accent); }
+  #rotBtn { margin-left: auto; }
+  .bottombar { position: relative; }
+  .rotbar { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: rgba(47,111,176,.16); display: none; z-index: 3; }
+  .rotfill { height: 100%; width: 0; background: #3f86cf; transition: width 1s linear; }
+  @keyframes kfade { from { opacity: 0; } to { opacity: 1; } }
+  body { animation: kfade .35s ease; }
+  body.leaving { opacity: 0; transition: opacity .3s ease; }
+  .chart { position: relative; margin-top: 0; flex: 1; min-height: 300px; }
+  svg { display: block; width: 100%; height: 100%; }
+  .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .ptlabel { fill: var(--text); font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums;
+    stroke: var(--panel); stroke-width: 5px; paint-order: stroke; }
+  .ptlabel .inr { fill: var(--accent); font-size: 22px; font-weight: 600; }
+  .tip {
+    position: absolute; pointer-events: none; background: #fff; color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; font-size: 12px; white-space: nowrap; display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    font-variant-numeric: tabular-nums;
+  }
+  .tip b { font-size: 14px; display: block; }
+  .stats { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .stat .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .empty { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
+  .live { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 8px; vertical-align: middle; }
+  /* flashing Updated / Not Updated pill */
+  .pill { background: #fff; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 5px 13px;
+    border: 1px solid; display: inline-flex; align-items: center; gap: 7px; vertical-align: middle; }
+  .pill i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .pill.ok  { color: var(--up);   border-color: #bfe3cd; }
+  .pill.ok i  { background: var(--up); }
+  .pill.not { color: var(--down); border-color: #f2c2c4; }
+  .pill.not i { background: var(--down); }
+  .pill.flash { animation: flash 1s steps(1, end) infinite; }
+  @keyframes flash { 50% { opacity: 0.2; } }
+  code { background: #262624; padding: 1px 6px; border-radius: 4px; }
+  @media (max-width: 760px) {
+    .app { grid-template-columns: 1fr; grid-template-areas: "top" "main" "bottom"; }
+    .leftbar { display: none; }
+    .price { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- TOP BAR -->
+  <header class="bar topbar">
+    <nav class="nav">
+      <a href="billing_dashboard.html" class="navlink on">Balance</a>
+      <a href="usage.html" class="navlink">Daily usage</a>
+      <a href="monthly.html" class="navlink">Monthly usage</a>
+    </nav>
+    <span class="label" style="margin-left:auto">Last updated (Indian time): <b id="updTime">—</b></span>
+    <span class="pill not flash" id="status"><i></i> Not Updated</span>
+  </header>
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="bar leftbar"></aside>
+
+  <!-- CHART -->
+  <main class="mainarea">
+    <div class="card">
+      <div class="overlay">
+        <div class="brand">Claude API Credit Balance</div>
+        <div class="label">Credit balance</div>
+        <div class="price-row">
+          <span class="price" id="price">—</span>
+          <span class="price-inr" id="priceInr"></span>
+          <span class="chg flat" id="chg">No data yet</span>
+        </div>
+      </div>
+      <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
+    </div>
+  </main>
+
+  <!-- BOTTOM STATUS BAR -->
+  <footer class="bar bottombar">
+    <div class="rotbar" id="rotBar"><div class="rotfill" id="rotFill"></div></div>
+    <div class="ranges" id="ranges">
+      <button data-r="1">1D</button>
+      <button data-r="7">1W</button>
+      <button data-r="30">1M</button>
+      <button data-r="90">3M</button>
+      <button data-r="0" class="on">ALL</button>
+    </div>
+    <button class="kioskbtn" id="rotBtn" title="Auto-rotate the 3 dashboards"><span class="ico">▶</span> <span id="rotLabel">Auto-rotate: Off</span></button>
+    <button class="kioskbtn" id="fsBtn" title="Fullscreen">⛶</button>
+  </footer>
+</div>
+
+<script>
+(() => {
+  // Data lives in billing_data.json (written by fetch_billing.py).
+  // The page re-reads it every 60 seconds and redraws when it changes.
+  const POLL_MS = 30000;        // check billing_data.json every 30 seconds
+  const RELOAD_MS = 300000;     // reload the whole page every 5 min as a safety net
+  let ALL = [], lastRaw = null, loaded = false, offline = false;
+
+  const $ = id => document.getElementById(id);
+  const money = v => "$" + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const INR_RATE = 88;  // ₹ per $1 — change this one number if the rate moves
+  const inr = v => "₹" + Math.round(v * INR_RATE).toLocaleString("en-IN");
+  const fmtTime = d => d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const fmtIST = d => d.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true });
+  const chart = $("chart"), tip = $("tip");
+  let range = 0;
+
+  function pick() {
+    if (!range || !ALL.length) return ALL;
+    const cut = ALL[ALL.length - 1].t - range * 864e5;
+    const pts = ALL.filter(p => p.t >= cut);
+    return pts.length ? pts : ALL.slice(-1);
+  }
+
+  function render() {
+    chart.querySelectorAll("svg,.empty").forEach(n => n.remove());
+    const pts = pick();
+    if (!pts.length) {
+      const msg = offline
+        ? 'Could not read billing_data.json.'
+        : loaded ? 'No readings yet - the first one is being fetched…' : 'Loading…';
+      chart.insertAdjacentHTML("afterbegin", '<div class="empty">' + msg + '</div>');
+      return;
+    }
+
+    const first = pts[0].v, last = pts[pts.length - 1].v, diff = last - first;
+    const pct = first ? diff / first * 100 : 0;
+    const dir = diff > 0.004 ? "up" : diff < -0.004 ? "down" : "flat";
+    const color = dir === "up" ? "var(--up)" : dir === "down" ? "var(--down)" : "var(--muted)";
+    $("price").textContent = money(last);
+    $("priceInr").textContent = inr(last);
+    $("chg").className = "chg " + dir;
+    $("chg").textContent = (diff >= 0 ? "+" : "−") + money(Math.abs(diff)) +
+      " (" + (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%) " + (range ? "this period" : "since first reading");
+    const vals = pts.map(p => p.v);
+    $("updTime").textContent = fmtIST(pts[pts.length - 1].t);
+
+    const W = chart.clientWidth, H = chart.clientHeight;
+    const m = { l: 8, r: 64, t: 110, b: 26 };  // extra top room for the balance overlay + big labels
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const pad = (hi - lo) * 0.12 || Math.max(hi * 0.02, 0.5);
+    lo -= pad; hi += pad;
+    const t0 = +pts[0].t, t1 = +pts[pts.length - 1].t, span = t1 - t0 || 1;
+    const x = t => pts.length === 1 ? m.l + iw / 2 : m.l + (t - t0) / span * iw;
+    const y = v => m.t + (hi - v) / (hi - lo) * ih;
+
+    const NS = "http://www.w3.org/2000/svg";
+    const el = (tag, attrs, parent) => {
+      const n = document.createElementNS(NS, tag);
+      for (const k in attrs) n.setAttribute(k, attrs[k]);
+      parent && parent.appendChild(n);
+      return n;
+    };
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}` });
+    chart.insertBefore(svg, tip);
+
+    // horizontal grid + right-side price axis
+    for (let i = 0; i <= 4; i++) {
+      const v = lo + (hi - lo) * i / 4, yy = y(v);
+      el("line", { x1: m.l, x2: m.l + iw, y1: yy, y2: yy, stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      el("text", { x: m.l + iw + 8, y: yy + 4, class: "axis" }, svg).textContent = money(v);
+    }
+
+    // time axis (a few evenly spaced labels)
+    const ticks = Math.min(5, pts.length);
+    for (let i = 0; i < ticks; i++) {
+      const t = ticks === 1 ? t0 : t0 + span * i / (ticks - 1);
+      const anchor = ticks === 1 ? "middle" : i === 0 ? "start" : i === ticks - 1 ? "end" : "middle";
+      el("text", { x: x(t), y: H - 6, class: "axis", "text-anchor": anchor }, svg)
+        .textContent = fmtTime(new Date(t));
+    }
+
+    // STOCK-STYLE line + area fill
+    const defs = el("defs", {}, svg);
+    const g = el("linearGradient", { id: "fill", x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+    el("stop", { offset: "0%", "stop-color": color, "stop-opacity": 0.22 }, g);
+    el("stop", { offset: "100%", "stop-color": color, "stop-opacity": 0 }, g);
+    const line = pts.map((p, i) => (i ? "L" : "M") + x(+p.t).toFixed(1) + "," + y(p.v).toFixed(1)).join("");
+    if (pts.length > 1) {
+      el("path", { d: line + `L${x(t1)},${m.t + ih}L${x(t0)},${m.t + ih}Z`, fill: "url(#fill)" }, svg);
+      el("path", { d: line, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+    }
+    // a dot at every point, but the amount only where the value CHANGED
+    pts.forEach((p, i) => {
+      const px = x(+p.t), py = y(p.v);
+      el("circle", { cx: px, cy: py, r: 3, fill: color, stroke: "var(--panel)", "stroke-width": 1.5 }, svg);
+      if (i !== 0 && p.v === pts[i - 1].v) return;  // same as before -> no label
+      const anchor = i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle";
+      // if the label would land behind the top-left balance box, drop it below the dot
+      const below = (py - 46) < (m.t + 6) && px < m.l + 300;
+      const t = el("text", { x: px, y: below ? py + 30 : py - 46, class: "ptlabel", "text-anchor": anchor }, svg);
+      el("tspan", { x: px }, t).textContent = money(p.v);
+      el("tspan", { x: px, dy: "1.2em", class: "inr" }, t).textContent = inr(p.v);
+    });
+
+    // last-price dashed line + dot
+    el("line", { x1: m.l, x2: m.l + iw, y1: y(last), y2: y(last), stroke: color,
+      "stroke-dasharray": "3 4", "stroke-opacity": 0.6 }, svg);
+    el("circle", { cx: x(t1), cy: y(last), r: 4, fill: color }, svg);
+
+    // crosshair hover
+    const vline = el("line", { y1: m.t, y2: m.t + ih, stroke: "var(--muted)", "stroke-dasharray": "3 3", visibility: "hidden" }, svg);
+    const dot = el("circle", { r: 5, fill: color, stroke: "var(--panel)", "stroke-width": 2, visibility: "hidden" }, svg);
+    const hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" }, svg);
+    const move = e => {
+      const r = svg.getBoundingClientRect();
+      const mx = ((e.touches ? e.touches[0].clientX : e.clientX) - r.left) * (W / r.width);
+      let best = pts[0];
+      for (const p of pts) if (Math.abs(x(+p.t) - mx) < Math.abs(x(+best.t) - mx)) best = p;
+      const px = x(+best.t), py = y(best.v);
+      vline.setAttribute("x1", px); vline.setAttribute("x2", px);
+      dot.setAttribute("cx", px); dot.setAttribute("cy", py);
+      vline.setAttribute("visibility", "visible"); dot.setAttribute("visibility", "visible");
+      tip.innerHTML = `<b>${money(best.v)}</b>${fmtTime(best.t)}`;
+      tip.style.display = "block";
+      const tw = tip.offsetWidth;
+      tip.style.left = Math.min(Math.max(px - tw / 2, 0), W - tw) + "px";
+      tip.style.top = Math.max(py - 54, 0) + "px";
+    };
+    const leave = () => {
+      vline.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden");
+      tip.style.display = "none";
+    };
+    hit.addEventListener("mousemove", move);
+    hit.addEventListener("touchmove", move, { passive: true });
+    hit.addEventListener("mouseleave", leave);
+    hit.addEventListener("touchend", leave);
+  }
+
+  $("ranges").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    document.querySelectorAll("#ranges button").forEach(n => n.classList.toggle("on", n === b));
+    range = +b.dataset.r; render();
+  });
+  window.addEventListener("resize", render);
+
+  // Re-read billing_data.json and redraw when it has changed.
+  async function poll() {
+    try {
+      const res = await fetch("billing_data.json?_=" + Date.now(), { cache: "no-store" });
+      if (!res.ok) throw new Error(res.status);
+      const raw = await res.text();
+      offline = false;
+      setLive(true);
+      if (raw !== lastRaw) {
+        lastRaw = raw;
+        ALL = JSON.parse(raw || "[]")
+          .map(p => ({ t: new Date(p.t), v: +p.balance }))
+          .sort((a, b) => a.t - b.t);
+        loaded = true;
+        render();
+      }
+    } catch (e) {
+      offline = true;
+      setLive(false);
+      if (!ALL.length) render();
+    }
+  }
+  function setLive(on) {
+    const s = $("status");
+    s.className = "pill flash " + (on ? "ok" : "not");
+    s.lastChild.textContent = on ? " Updated" : " Not Updated";
+  }
+  render();
+  poll();
+  setInterval(poll, POLL_MS);
+  setTimeout(() => location.reload(), RELOAD_MS);
+})();
+</script>
+
+<script>
+/* Auto-rotate kiosk: cycles Balance -> Daily usage -> Monthly usage every 10s.
+   Pauses while you are active (mouse / key / touch), resumes when idle.
+   Single play/pause button in the bottom bar; state remembered across pages. */
+(() => {
+  // Inside the combined rotation on daily-dashboard.html, that page does the rotating
+  if (window.self !== window.top) return;
+  const ORDER = ["billing_dashboard.html", "usage.html", "monthly.html"];
+  let here = (location.pathname.split("/").pop() || "billing_dashboard.html").toLowerCase();
+  if (here === "index.html" || here === "") here = "billing_dashboard.html";
+  let idx = ORDER.indexOf(here); if (idx < 0) idx = 0;
+  const ROTATE_SECS = 10, IDLE_MS = 1500;
+  const btn = document.getElementById("rotBtn");
+  const label = document.getElementById("rotLabel");
+  const ico = btn && btn.querySelector(".ico");
+  const bar = document.getElementById("rotBar");
+  const fill = document.getElementById("rotFill");
+  let remaining = ROTATE_SECS, active = false, idleT = null;
+  const on = () => { try { return localStorage.getItem("kiosk") === "on"; } catch (e) { return false; } };
+  function paint() {
+    if (!btn) return;
+    const o = on();
+    btn.classList.toggle("on", o);
+    if (ico) ico.textContent = o ? "⏸" : "▶";
+    if (label) label.textContent = o ? "Auto-rotate: On" : "Auto-rotate: Off";
+    if (bar) bar.style.display = o ? "block" : "none";
+  }
+  if (btn) btn.addEventListener("click", () => {
+    try { localStorage.setItem("kiosk", on() ? "off" : "on"); } catch (e) {}
+    remaining = ROTATE_SECS; paint();
+  });
+  function markActive() {
+    active = true;                        // freeze the line where it is (don't reset)
+    clearTimeout(idleT); idleT = setTimeout(() => { active = false; }, IDLE_MS);
+  }
+  ["mousemove", "mousedown", "keydown", "touchstart", "wheel", "scroll"].forEach(ev =>
+    window.addEventListener(ev, markActive, { passive: true }));
+  let navigating = false;
+  function go() {
+    navigating = true;
+    document.body.classList.add("leaving");   // smooth fade before switching
+    setTimeout(() => { location.href = ORDER[(idx + 1) % ORDER.length]; }, 300);
+  }
+  setInterval(() => {
+    if (!on() || navigating) return;
+    if (active) return;                  // frozen in place while you are active
+    remaining--;                         // fills left -> right over 10s
+    if (fill) fill.style.width = ((ROTATE_SECS - remaining) / ROTATE_SECS * 100) + "%";
+    if (remaining <= 0) go();
+  }, 1000);
+  const fs = document.getElementById("fsBtn");
+  if (fs) fs.addEventListener("click", () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(() => {});
+  });
+  paint();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+<!doctype html>
+<!-- Claude API daily usage (this month) -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Usage</title>
+<style>
+  :root {
+    --bg: #eef5fc; --panel: #ffffff; --border: #cdddee;
+    --text: #1f2a37; --muted: #5b6b7b; --grid: #e6eef6;
+    --up: #15a35b; --down: #e5484d; --accent: #2f6fb0;
+    --barbg: #d7e9fb;
+    --bar: #3f86cf;      /* usage bar colour */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    overflow: hidden;
+  }
+  .app { display: grid; gap: 0; margin: 0; padding: 0; height: 100vh;
+    grid-template-columns: 61px 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: "top top" "left main" "bottom bottom"; }
+  .bar { background: var(--barbg); border: 1px solid var(--border); border-radius: 0; }
+  .topbar { grid-area: top; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 14px 20px; }
+  .leftbar { grid-area: left; }
+  .mainarea { grid-area: main; }
+  .bottombar { grid-area: bottom; padding: 10px 16px; color: var(--muted); font-size: 12px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  /* page nav */
+  .nav { display: flex; gap: 6px; }
+  .navlink { text-decoration: none; color: var(--muted); font-size: 13px; font-weight: 600;
+    padding: 6px 13px; border-radius: 6px; border: 1px solid transparent; }
+  .navlink:hover { color: var(--text); border-color: var(--border); }
+  .navlink.on { color: var(--accent); background: #fff; border-color: var(--border); }
+  .kioskbtn { display: inline-flex; align-items: center; gap: 7px; background: #fff; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 13px; font: inherit; font-size: 12px;
+    font-weight: 600; cursor: pointer; }
+  .kioskbtn:hover { color: var(--text); border-color: var(--accent); }
+  .kioskbtn.on { color: var(--accent); border-color: var(--accent); }
+  #rotBtn { margin-left: auto; }
+  .bottombar { position: relative; }
+  .rotbar { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: rgba(47,111,176,.16); display: none; z-index: 3; }
+  .rotfill { height: 100%; width: 0; background: #3f86cf; transition: width 1s linear; }
+  @keyframes kfade { from { opacity: 0; } to { opacity: 1; } }
+  body { animation: kfade .35s ease; }
+  body.leaving { opacity: 0; transition: opacity .3s ease; }
+  .card { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 0;
+    padding: 20px; height: 100%; display: flex; flex-direction: column; }
+  .overlay { position: absolute; top: 16px; left: 20px; right: 20px; z-index: 2; pointer-events: none;
+    text-shadow: 0 0 6px #fff, 0 0 6px #fff, 0 0 6px #fff; }
+  .overlay .brand { font-size: 15px; font-weight: 600; margin-bottom: 6px; text-align: center; }
+  .overlay .label { color: var(--muted); font-size: 13px; }
+  .overlay .total-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .overlay .total { font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .overlay .total-inr { font-size: 20px; font-weight: 600; color: var(--accent); }
+  .overlay .seg { pointer-events: auto; display: inline-flex; gap: 4px; margin-top: 10px; text-shadow: none; }
+  .overlay .seg button { background: #fff; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 11px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .overlay .seg button:hover { color: var(--text); border-color: var(--accent); }
+  .overlay .seg button.on { color: var(--accent); border-color: var(--accent); }
+  .chart { position: relative; margin-top: 0; flex: 1; min-height: 300px; }
+  svg { display: block; width: 100%; height: 100%; }
+  .axis { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .blabel { fill: var(--text); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+    stroke: var(--panel); stroke-width: 3.5px; paint-order: stroke; text-anchor: middle; }
+  .blabel .inr { fill: var(--accent); font-size: 11px; font-weight: 600; }
+  .empty { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
+  .pill { background: #fff; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 5px 13px;
+    border: 1px solid; display: inline-flex; align-items: center; gap: 7px; vertical-align: middle; }
+  .pill i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .pill.ok  { color: var(--up);   border-color: #bfe3cd; }
+  .pill.ok i  { background: var(--up); }
+  .pill.not { color: var(--down); border-color: #f2c2c4; }
+  .pill.not i { background: var(--down); }
+  .pill.flash { animation: flash 1s steps(1, end) infinite; }
+  @keyframes flash { 50% { opacity: 0.2; } }
+  .tip {
+    position: absolute; pointer-events: none; background: #fff; color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; font-size: 12px; white-space: nowrap; display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12); font-variant-numeric: tabular-nums;
+  }
+  .tip b { font-size: 14px; display: block; }
+  @media (max-width: 760px) {
+    .app { grid-template-columns: 1fr; grid-template-areas: "top" "main" "bottom"; }
+    .leftbar { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- TOP BAR -->
+  <header class="bar topbar">
+    <nav class="nav">
+      <a href="billing_dashboard.html" class="navlink">Balance</a>
+      <a href="usage.html" class="navlink on">Daily usage</a>
+      <a href="monthly.html" class="navlink">Monthly usage</a>
+    </nav>
+    <span class="label" style="margin-left:auto">Last updated (Indian time): <b id="updTime">—</b></span>
+    <span class="pill not flash" id="status"><i></i> Not Updated</span>
+  </header>
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="bar leftbar"></aside>
+
+  <!-- CHART -->
+  <main class="mainarea">
+    <div class="card">
+      <div class="overlay">
+        <div class="brand">Daily Usage</div>
+        <div class="label" id="monthLabel">This month</div>
+        <div class="total-row">
+          <span class="total" id="total">—</span>
+          <span class="total-inr" id="totalInr"></span>
+          <span class="label">spent this month</span>
+        </div>
+        <div class="seg" id="seg">
+          <button data-mode="cost" class="on">API cost</button>
+          <button data-mode="credit">Credit used</button>
+        </div>
+      </div>
+      <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
+    </div>
+  </main>
+
+  <!-- BOTTOM STATUS BAR -->
+  <footer class="bar bottombar">
+    <div class="rotbar" id="rotBar"><div class="rotfill" id="rotFill"></div></div>
+    <span id="footNote">Usage = actual API cost each day.</span>
+    <button class="kioskbtn" id="rotBtn" title="Auto-rotate the 3 dashboards"><span class="ico">▶</span> <span id="rotLabel">Auto-rotate: Off</span></button>
+    <button class="kioskbtn" id="fsBtn" title="Fullscreen">⛶</button>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const POLL_MS = 30000;
+  const RELOAD_MS = 300000;
+  let lastRaw = null, loaded = false, offline = false, DAYS = [], TOTAL = 0, lastT = null;
+  let readings = [], COST = {}, mode = "cost";   // "cost" = API cost, "credit" = balance drop
+
+  const $ = id => document.getElementById(id);
+  const money = v => "$" + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const INR_RATE = 88;  // ₹ per $1 — change this one number if the rate moves
+  const inr = v => "₹" + Math.round(v * INR_RATE).toLocaleString("en-IN");
+  const fmtIST = d => d.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true });
+  // IST calendar date as YYYY-MM-DD
+  const istKey = d => d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const chart = $("chart"), tip = $("tip");
+
+  // Turn the balance readings into per-day spend for the CURRENT month.
+  function computeDays(readings) {
+    const spend = {};
+    for (let i = 1; i < readings.length; i++) {
+      const drop = readings[i - 1].v - readings[i].v;   // balance going down = usage
+      if (drop > 0) {
+        const k = istKey(readings[i].t);
+        spend[k] = (spend[k] || 0) + drop;
+      }
+    }
+    const now = new Date();
+    const todayKey = istKey(now);
+    const [yy, mm] = todayKey.split("-").map(Number);
+    const todayDay = Number(todayKey.slice(8, 10));
+    const monthName = now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", month: "long", year: "numeric" });
+    const days = [];
+    for (let d = 1; d <= todayDay; d++) {
+      const k = `${yy}-${String(mm).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      days.push({ key: k, day: d, amt: spend[k] || 0 });
+    }
+    // trim the leading empty days (before tracking began) so the chart starts at the first real day
+    let start = days.findIndex(x => x.amt > 0);
+    if (start < 0) start = Math.max(0, days.length - 1);
+    return { days: days.slice(start), monthName };
+  }
+
+  // Per-day ACTUAL API cost for the CURRENT month, from cost_data.json.
+  function computeDaysCost(costMap) {
+    const now = new Date();
+    const todayKey = istKey(now);
+    const [yy, mm] = todayKey.split("-").map(Number);
+    const todayDay = Number(todayKey.slice(8, 10));
+    const monthName = now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", month: "long", year: "numeric" });
+    const prefix = `${yy}-${String(mm).padStart(2, "0")}`;
+    const days = [];
+    for (let d = 1; d <= todayDay; d++) {
+      const k = `${prefix}-${String(d).padStart(2, "0")}`;
+      days.push({ key: k, day: d, amt: costMap[k] || 0 });
+    }
+    let start = days.findIndex(x => x.amt > 0);
+    if (start < 0) start = Math.max(0, days.length - 1);
+    return { days: days.slice(start), monthName };
+  }
+
+  function recompute() {
+    const r = mode === "cost" ? computeDaysCost(COST) : computeDays(readings);
+    DAYS = r.days;
+    TOTAL = DAYS.reduce((s, d) => s + d.amt, 0);
+    $("monthLabel").textContent = r.monthName;
+    $("footNote").textContent = mode === "cost"
+      ? "Usage = actual API cost each day."
+      : "Usage = how much the credit balance dropped each day.";
+  }
+
+  function render() {
+    chart.querySelectorAll("svg,.empty").forEach(n => n.remove());
+    if (!DAYS.length) {
+      const msg = offline ? "Could not read billing_data.json."
+        : loaded ? "No usage recorded yet this month." : "Loading…";
+      chart.insertAdjacentHTML("afterbegin", '<div class="empty">' + msg + "</div>");
+      return;
+    }
+    $("total").textContent = money(TOTAL);
+    $("totalInr").textContent = inr(TOTAL);
+    if (lastT) $("updTime").textContent = fmtIST(lastT);
+
+    const W = chart.clientWidth, H = chart.clientHeight;
+    const m = { l: 44, r: 16, t: 92, b: 40 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const n = DAYS.length;
+    const maxAmt = Math.max(...DAYS.map(d => d.amt), 0.01);
+    const hi = maxAmt * 1.25;             // headroom for labels
+    const y = v => m.t + (hi - v) / hi * ih;
+    const base = m.t + ih;
+    const slot = iw / n;
+    const bw = Math.min(slot * 0.62, 64);
+    const cx = i => m.l + slot * (i + 0.5);
+
+    const NS = "http://www.w3.org/2000/svg";
+    const el = (tag, attrs, parent) => {
+      const nn = document.createElementNS(NS, tag);
+      for (const k in attrs) nn.setAttribute(k, attrs[k]);
+      parent && parent.appendChild(nn);
+      return nn;
+    };
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}` });
+    chart.insertBefore(svg, tip);
+
+    // horizontal grid + left $ axis
+    for (let i = 0; i <= 4; i++) {
+      const v = hi * i / 4, yy = y(v);
+      el("line", { x1: m.l, x2: m.l + iw, y1: yy, y2: yy, stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      el("text", { x: m.l - 8, y: yy + 4, class: "axis", "text-anchor": "end" }, svg).textContent = money(v);
+    }
+
+    // bars
+    DAYS.forEach((d, i) => {
+      const x0 = cx(i) - bw / 2;
+      const top = d.amt > 0 ? y(d.amt) : base;
+      el("rect", { x: x0, y: top, width: bw, height: Math.max(base - top, 0),
+        fill: "var(--bar)", rx: 3 }, svg);
+      // day number under the bar
+      el("text", { x: cx(i), y: H - 22, class: "axis", "text-anchor": "middle" }, svg).textContent = d.day;
+      el("text", { x: cx(i), y: H - 8, class: "axis", "text-anchor": "middle" }, svg).textContent =
+        new Date(d.key + "T00:00").toLocaleString("en-IN", { month: "short" });
+      // amount label on top of the bar
+      if (d.amt > 0) {
+        const t = el("text", { x: cx(i), y: top - 20, class: "blabel" }, svg);
+        el("tspan", { x: cx(i) }, t).textContent = money(d.amt);
+        el("tspan", { x: cx(i), dy: "1.2em", class: "inr" }, t).textContent = inr(d.amt);
+      }
+      // hover target
+      const hit = el("rect", { x: cx(i) - slot / 2, y: m.t, width: slot, height: ih, fill: "transparent" }, svg);
+      const show = () => {
+        tip.innerHTML = `<b>${money(d.amt)} · ${inr(d.amt)}</b>${new Date(d.key + "T00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+        tip.style.display = "block";
+        const tw = tip.offsetWidth;
+        tip.style.left = Math.min(Math.max(cx(i) - tw / 2, 0), W - tw) + "px";
+        tip.style.top = Math.max(top - 56, 0) + "px";
+      };
+      hit.addEventListener("mousemove", show);
+      hit.addEventListener("mouseleave", () => tip.style.display = "none");
+    });
+
+    // baseline
+    el("line", { x1: m.l, x2: m.l + iw, y1: base, y2: base, stroke: "var(--border)", "stroke-width": 1 }, svg);
+  }
+
+  async function poll() {
+    try {
+      const [bRes, cRes] = await Promise.all([
+        fetch("billing_data.json?_=" + Date.now(), { cache: "no-store" }),
+        fetch("cost_data.json?_=" + Date.now(), { cache: "no-store" }).catch(() => null),
+      ]);
+      if (!bRes.ok) throw new Error(bRes.status);
+      const raw = await bRes.text();
+      const costRaw = (cRes && cRes.ok) ? await cRes.text() : "{}";
+      offline = false;
+      setLive(true);
+      const combined = raw + "||" + costRaw;
+      if (combined !== lastRaw) {
+        lastRaw = combined;
+        readings = JSON.parse(raw || "[]")
+          .map(p => ({ t: new Date(p.t), v: +p.balance }))
+          .sort((a, b) => a.t - b.t);
+        lastT = readings.length ? readings[readings.length - 1].t : null;
+        COST = JSON.parse(costRaw || "{}");
+        loaded = true;
+        recompute();
+        render();
+      }
+    } catch (e) {
+      offline = true;
+      setLive(false);
+      if (!DAYS.length) render();
+    }
+  }
+  function setLive(on) {
+    const s = $("status");
+    s.className = "pill flash " + (on ? "ok" : "not");
+    s.lastChild.textContent = on ? " Updated" : " Not Updated";
+  }
+  $("seg").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    mode = b.dataset.mode;
+    document.querySelectorAll("#seg button").forEach(n => n.classList.toggle("on", n === b));
+    recompute();
+    render();
+  });
+  window.addEventListener("resize", render);
+  render();
+  poll();
+  setInterval(poll, POLL_MS);
+  setTimeout(() => location.reload(), RELOAD_MS);
+})();
+</script>
+
+<script>
+/* Auto-rotate kiosk: cycles Balance -> Daily usage -> Monthly usage every 10s.
+   Pauses while you are active (mouse / key / touch), resumes when idle. */
+(() => {
+  // Inside the combined rotation on daily-dashboard.html, that page does the rotating
+  if (window.self !== window.top) return;
+  const ORDER = ["billing_dashboard.html", "usage.html", "monthly.html"];
+  let here = (location.pathname.split("/").pop() || "billing_dashboard.html").toLowerCase();
+  if (here === "index.html" || here === "") here = "billing_dashboard.html";
+  let idx = ORDER.indexOf(here); if (idx < 0) idx = 0;
+  const ROTATE_SECS = 10, IDLE_MS = 1500;
+  const btn = document.getElementById("rotBtn");
+  const label = document.getElementById("rotLabel");
+  const ico = btn && btn.querySelector(".ico");
+  const bar = document.getElementById("rotBar");
+  const fill = document.getElementById("rotFill");
+  let remaining = ROTATE_SECS, active = false, idleT = null;
+  const on = () => { try { return localStorage.getItem("kiosk") === "on"; } catch (e) { return false; } };
+  function paint() {
+    if (!btn) return;
+    const o = on();
+    btn.classList.toggle("on", o);
+    if (ico) ico.textContent = o ? "⏸" : "▶";
+    if (label) label.textContent = o ? "Auto-rotate: On" : "Auto-rotate: Off";
+    if (bar) bar.style.display = o ? "block" : "none";
+  }
+  if (btn) btn.addEventListener("click", () => {
+    try { localStorage.setItem("kiosk", on() ? "off" : "on"); } catch (e) {}
+    remaining = ROTATE_SECS; paint();
+  });
+  function markActive() {
+    active = true;                        // freeze the line where it is (don't reset)
+    clearTimeout(idleT); idleT = setTimeout(() => { active = false; }, IDLE_MS);
+  }
+  ["mousemove", "mousedown", "keydown", "touchstart", "wheel", "scroll"].forEach(ev =>
+    window.addEventListener(ev, markActive, { passive: true }));
+  let navigating = false;
+  function go() {
+    navigating = true;
+    document.body.classList.add("leaving");   // smooth fade before switching
+    setTimeout(() => { location.href = ORDER[(idx + 1) % ORDER.length]; }, 300);
+  }
+  setInterval(() => {
+    if (!on() || navigating) return;
+    if (active) return;                  // frozen in place while you are active
+    remaining--;                         // fills left -> right over 10s
+    if (fill) fill.style.width = ((ROTATE_SECS - remaining) / ROTATE_SECS * 100) + "%";
+    if (remaining <= 0) go();
+  }, 1000);
+  const fs = document.getElementById("fsBtn");
+  if (fs) fs.addEventListener("click", () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(() => {});
+  });
+  paint();
+})();
+</script>
+</body>
+</html>

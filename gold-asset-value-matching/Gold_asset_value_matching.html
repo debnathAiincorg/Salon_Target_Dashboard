@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gold Value Matching</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page-plane:     #f9f9f7;
+    --surface-1:      #fcfcfb;
+    --surface-2:      #f0efec;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page-plane:     #0d0d0d;
+      --surface-1:      #1a1a19;
+      --surface-2:      #232322;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --border:         rgba(255,255,255,0.10);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.4;
+  }
+
+  nav.top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.top-nav .brand {
+    font-weight: 600;
+    font-size: 16px;
+  }
+  nav.top-nav .nav-links {
+    display: flex;
+    gap: 8px;
+  }
+  nav.top-nav .nav-link {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--gridline);
+    background: var(--surface-2);
+  }
+  nav.top-nav .nav-link:hover {
+    border-color: var(--text-muted);
+  }
+  nav.top-nav .nav-link.active {
+    background: var(--text-primary);
+    color: var(--page-plane);
+    border-color: var(--text-primary);
+  }
+
+  .page {
+    max-width: 1300px;
+    width: 92%;
+    margin: 0 auto;
+    padding: 16px 0 60px;
+  }
+
+  section.calc-section {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  section.calc-section h1, section.calc-section h2 {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 600;
+  }
+  .calc-subtitle {
+    margin: 0 0 20px;
+    color: var(--text-secondary);
+    font-size: 14.42px;
+  }
+
+  .kolkata-section {
+    min-height: 220px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    text-align: left;
+  }
+  .stat-tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 26px 28px;
+  }
+  .stat-label {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+</style>
+</head>
+<body>
+  <nav class="top-nav">
+    <span class="brand">Gold Value Matching</span>
+    <div class="nav-links">
+      <a href="Gold_asset_value_matching.html" class="nav-link active">Home</a>
+      <a href="gold_all_ditails_with_table.html" class="nav-link">Our Gold full details</a>
+      <a href="compair_to_other_rate.html" class="nav-link">Compare to Other Rates</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <section class="calc-section">
+      <h1>National calculation</h1>
+      <p class="calc-subtitle">Last updated 21 November at 10:17 AM IST</p>
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <div class="stat-label">Available Gold</div>
+          <div class="stat-value">568.840 g</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">Date</div>
+          <div class="stat-value">21 November</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">Tanishq National Rate</div>
+          <div class="stat-value">₹11,560.00/gram</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">Total Gold Value</div>
+          <div class="stat-value">₹65,75,790.40</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="calc-section kolkata-section">
+      <h2>Kolkata calculation</h2>
+    </section>
+  </div>
+<script>
+  // Auto-refresh: unlike compair_to_other_rate.html, this page's numbers
+  // are baked into the HTML at build time (see build_html() below), not
+  // fetched live -- so the only way an already-open tab picks up a newer
+  // deploy is to reload the document itself. The query param busts both
+  // the browser cache and GitHub Pages' CDN cache (which key on the full
+  // URL), so this can't just serve back the same stale copy.
+  setInterval(function () {
+    location.href = location.pathname + "?t=" + Date.now();
+  }, 5 * 60 * 1000);
+</script>
+</body>
+</html>
