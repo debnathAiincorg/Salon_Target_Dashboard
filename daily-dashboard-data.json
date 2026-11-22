@@ -1,8 +1,8 @@
 {
-  "current_date_label": "22 November",
+  "current_date_label": "23 November",
   "current_week_sales": 8039,
   "current_week_balance": 6961,
-  "remaining_days": 1,
+  "remaining_days": 7,
   "previous_week_sales": 12635,
   "monthly_sales": 50766,
   "daily_chart_data": [
@@ -85,10 +85,6 @@
   ],
   "weekly_chart_data": [
     {
-      "week": "31 Aug - 6 Sep",
-      "weekly_sales": 4508
-    },
-    {
       "week": "7 Sep - 13 Sep",
       "weekly_sales": 21554
     },
@@ -131,14 +127,18 @@
     {
       "week": "16 Nov - 22 Nov",
       "weekly_sales": 8039
+    },
+    {
+      "week": "23 Nov - 29 Nov",
+      "weekly_sales": 0
     }
   ],
   "weekly_target": 15000,
-  "week_number": 47,
+  "week_number": 48,
   "month_label": "November 2026",
-  "current_week_daily_average": 1340,
-  "previous_week_daily_average": 1805,
-  "current_month_daily_average": 2417,
+  "current_week_daily_average": 0,
+  "previous_week_daily_average": 1148,
+  "current_month_daily_average": 2308,
   "previous_month_daily_average": 4798,
-  "last_updated": "22 November 2026, 11:45 PM IST"
+  "last_updated": "23 November 2026, 12:00 AM IST"
 }
