@@ -656,7 +656,7 @@
             <div class="chart-container">
                 <canvas id="gold-rate-chart"></canvas>
             </div>
-            <div class="gold-note">Tanishq gold rate in &#8377; per gram, as reported daily by Goodreturns (goodreturns.in). Days without a report are not shown.</div>
+            <div class="gold-note">Tanishq gold rate in &#8377; per gram, as reported by Goodreturns (goodreturns.in). Solid dot: reported that day. Hollow dot: no report that day, last known rate shown.</div>
         </section>
     </main>
 
@@ -1088,11 +1088,28 @@
                 return;
             }
 
-            // Days within the last chart_days days (Tanishq rates are not reported every day)
-            const lastDay = new Date(history[history.length - 1].date + 'T00:00:00Z');
-            const firstDay = new Date(lastDay.getTime() - ((data.chart_days || 30) - 1) * 86400000);
-            const points = history.filter(p => new Date(p.date + 'T00:00:00Z') >= firstDay);
-            const latest = points[points.length - 1];
+            // Always the last chart_days calendar days, ending today (India time). Goodreturns does
+            // not report Tanishq's rate every day: a day without a report repeats the last known
+            // rate and is drawn with a hollow dot ("filled in"); reported days have a solid dot.
+            const byDate = new Map(history.map(p => [p.date, p]));
+            const todayIst = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
+            const chartDays = data.chart_days || 30;
+            const dayKeys = [];
+            for (let i = chartDays - 1; i >= 0; i--) {
+                dayKeys.push(new Date(Date.parse(todayIst + 'T00:00:00Z') - i * 86400000).toISOString().slice(0, 10));
+            }
+            let lastKnown = null;
+            for (const p of history) {  // the last report before the window starts
+                if (p.date < dayKeys[0]) lastKnown = p;
+            }
+            const points = dayKeys.map(day => {
+                if (byDate.has(day)) {
+                    lastKnown = byDate.get(day);
+                    return { ...lastKnown, date: day, reported: true };
+                }
+                return lastKnown ? { ...lastKnown, date: day, reported: false, fromDate: lastKnown.date } : null;
+            });
+            const latest = history[history.length - 1];  // latest real report
             renderStats('gold-stats', ['24k', '22k', '18k'].map(key =>
                 // The date of the latest reported rate (not always today)
                 [`${GOLD_VARIANTS[key].label} on ${shortDate(latest.date)} (per gram)`, formatRupees(latest[key])]));
@@ -1100,20 +1117,25 @@
             const shown = goldVariant === 'all' ? ['18k', '22k', '24k'] : [goldVariant];
             const datasets = shown.map(key => ({
                 label: GOLD_VARIANTS[key].label,
-                data: points.map(p => p[key]),
+                data: points.map(p => (p ? p[key] : null)),
                 borderColor: GOLD_VARIANTS[key].color,
                 backgroundColor: GOLD_VARIANTS[key].color,
+                // Solid dot = reported that day; hollow dot = no report, last known rate
+                pointBackgroundColor: points.map(p => (p && p.reported ? GOLD_VARIANTS[key].color : '#fff')),
+                pointBorderColor: GOLD_VARIANTS[key].color,
+                pointBorderWidth: 1.5,
                 borderWidth: 2,
-                pointRadius: 2.5,
+                pointRadius: 3,
                 pointHoverRadius: 5,
                 tension: 0,
                 variantKey: key,
+                goldPoints: points,
             }));
 
             const ctx = document.getElementById('gold-rate-chart').getContext('2d');
             goldChart = new Chart(ctx, {
                 type: 'line',
-                data: { labels: points.map(p => shortDate(p.date)), datasets },
+                data: { labels: dayKeys.map(shortDate), datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -1152,6 +1174,10 @@
                                     const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '';
                                     const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
                                     const name = shown.length > 1 ? `${context.dataset.label}: ` : '';
+                                    const point = context.dataset.goldPoints[context.dataIndex];
+                                    if (point && !point.reported) {
+                                        return `${name}${formatRupees(value)} (no report - last known rate from ${shortDate(point.fromDate)})`;
+                                    }
                                     return `${name}${formatRupees(value)} (${sign}${Math.abs(diff).toLocaleString('en-IN')}${arrow})`;
                                 },
                             },
@@ -1237,6 +1263,10 @@
         function renderUpdateStatus(data) {
             salonStatus = statusFrom(data && data.daily && data.daily.last_updated);
             goldStatus = statusFrom(data && data.gold && data.gold.last_updated);
+            // Gold is up to date only once today's Tanishq rate has been reported
+            const goldHistory = (data && data.gold && data.gold.history) || [];
+            const todayIst = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
+            goldStatus.isUpdated = goldHistory.length > 0 && goldHistory[goldHistory.length - 1].date === todayIst;
             renderNavStatus();
         }
 
