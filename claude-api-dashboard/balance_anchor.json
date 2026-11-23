@@ -1,5 +1,5 @@
 {
-  "balance": 21.49,
-  "as_of": "2026-11-21T04:00:34+00:00",
+  "balance": 20.59,
+  "as_of": "2026-11-23T09:50:00+00:00",
   "how_to_update": "The Balance page shows this balance minus the API cost since 'as_of'. After buying credits (or if the estimate drifts), copy the real credit balance from platform.claude.com/settings/billing into 'balance' and the current time (UTC) into 'as_of'."
 }
