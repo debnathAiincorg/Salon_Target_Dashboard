@@ -7,9 +7,9 @@ A full-stack sales dashboard that reads live data from SharePoint via Microsoft 
 `daily-dashboard.html` shows everything in one full-screen rotation (10 seconds per page):
 Salon (Monthly, Weekly, Yearly) → Claude API (Balance, Daily usage, Monthly usage) →
 Gold (Rate trends). The Claude API pages are shown inside it in frames; they also still work
-on their own. The Gold Rate Trends chart shows the last 30 days of the 24K / 22K / 18K gold
-rate in ₹ per gram from GoldAPI.io (international market price; jewellers' store rates, such
-as Tanishq's, are higher).
+on their own. The Gold Rate Trends chart shows the last 30 days of Tanishq's 24K / 22K / 18K
+gold rate in ₹ per gram, read from Goodreturns' daily news articles (Tanishq's own website
+blocks automated readers). Days without a Goodreturns report are left out, not invented.
 
 ```
 Salon_Target_Dashboard/
@@ -20,11 +20,11 @@ Salon_Target_Dashboard/
 ├── requirements.txt               Salon Python dependencies (used by GitHub Actions)
 ├── .env.example                   Example environment variable settings
 ├── claude-api-dashboard/          Claude API credit balance and usage (billing_dashboard.html, usage.html, monthly.html)
-├── gold-asset-value-matching/     Gold Rate Trends: fetch_gold_rate.py -> gold-rate-data.json
+├── gold-asset-value-matching/     Gold Rate Trends: fetch_tanishq_rate.py -> gold-rate-data.json
 ├── .github/workflows/
 │   ├── update-dashboard.yml       Salon data      (repository dispatch "update-dashboard")
 │   ├── claude-api-dashboard.yml   Claude API cost (hourly, and repository dispatch "fetch-balance")
-│   └── gold-rate.yml              Gold rate data  (daily at 10:30 IST)
+│   └── gold-rate.yml              Tanishq gold rate (Power Automate trigger, and daily at 10:30 IST)
 └── docs/superpowers/
     ├── specs/2026-06-24-sales-dashboard-design.md
     └── plans/2026-06-24-sales-dashboard-implementation.md
@@ -41,7 +41,6 @@ updates the live site by itself.
 | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | Salon |
 | `SHAREPOINT_SHARE_LINK` | Salon |
 | `ANTHROPIC_ADMIN_KEY` | Claude API daily/monthly cost (an Admin API credential of the organization that owns the API credits; read-only Usage and Cost Analytics API). There is no API for the credit balance, so the Balance page shows an estimate: the balance in `claude-api-dashboard/balance_anchor.json` minus the API cost since then (update that file after buying credits). |
-| `GOLDAPI_KEY` | Gold rate (free API key from goldapi.io; about 30 requests on the first run, then 1 a day) |
 
 Never commit `.env` files, `session_state.json` or the Claude browser profile folders;
 `.gitignore` keeps them out.

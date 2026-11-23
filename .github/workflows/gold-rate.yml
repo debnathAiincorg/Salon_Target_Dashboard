@@ -1,17 +1,15 @@
-# Gold Rate Trends chart (data in gold-asset-value-matching/gold-rate-data.json).
+# Gold Rate Trends chart: Tanishq's gold rate (data in gold-asset-value-matching/gold-rate-data.json).
 #
 # Runs whenever Power Automate starts the Salon update (every 15 minutes), every day at
-# 10:30 IST as a backup, or with the "Run workflow" button. Only the first run of each
-# day (India time) calls GoldAPI; later runs that day find today's rate already saved. fetch_gold_rate.py
-# reads the 24K / 22K / 18K gold rate in INR per gram from GoldAPI.io (needs the
-# secret GOLDAPI_KEY) and adds today's point; the first run also fills in the last
-# 30 days. The data file is committed; GitHub Pages republishes the site by itself.
+# 10:30 IST as a backup, or with the "Run workflow" button. fetch_tanishq_rate.py reads
+# Tanishq's daily rate from Goodreturns' news articles (Tanishq's own site blocks
+# automated readers); once today's rate is saved, later runs that day stop at once.
+# No secret is needed. The data file is committed; GitHub Pages republishes the site.
 
 name: Update Gold Rate
 
 on:
-  # The Salon trigger Power Automate sends every 15 minutes; fetch_gold_rate.py calls
-  # GoldAPI only once a day, so the free plan's 150 requests a month are enough
+  # The Salon trigger Power Automate sends every 15 minutes
   repository_dispatch:
     types: [update-dashboard]
   schedule:
@@ -43,10 +41,8 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Fetch today's gold rate
-        env:
-          GOLDAPI_KEY: ${{ secrets.GOLDAPI_KEY }}
-        run: python fetch_gold_rate.py
+      - name: Fetch Tanishq's gold rate
+        run: python fetch_tanishq_rate.py
 
       - name: Commit and push the data file
         run: |
@@ -57,7 +53,7 @@ jobs:
             echo "No change to the gold rate data, skipping commit"
             exit 0
           fi
-          git commit -m "chore: update gold rate data via GitHub Actions"
+          git commit -m "chore: update Tanishq gold rate data via GitHub Actions"
           # The Salon and Claude API workflows push to the same branch: pull their commits first
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin main && git push origin HEAD:main && exit 0

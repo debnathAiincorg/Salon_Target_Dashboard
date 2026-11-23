@@ -641,7 +641,7 @@
             <iframe data-src="claude-api-dashboard/monthly.html" title="Claude API monthly usage"></iframe>
         </section>
 
-        <!-- Gold Rate Trends (data: gold-asset-value-matching/gold-rate-data.json, updated daily by gold-rate.yml) -->
+        <!-- Gold Rate Trends: Tanishq's rate (data: gold-asset-value-matching/gold-rate-data.json, from fetch_tanishq_rate.py via gold-rate.yml) -->
         <section class="chart-card" data-group="Gold" data-slide-name="Rate trends" aria-hidden="true">
             <div class="chart-header">
                 <div class="chart-stats" id="gold-stats"></div>
@@ -656,7 +656,7 @@
             <div class="chart-container">
                 <canvas id="gold-rate-chart"></canvas>
             </div>
-            <div class="gold-note">International market price of gold in &#8377; per gram (source: GoldAPI.io). Jewellers' store rates, such as Tanishq's, are higher.</div>
+            <div class="gold-note">Tanishq gold rate in &#8377; per gram, as reported daily by Goodreturns (goodreturns.in). Days without a report are not shown.</div>
         </section>
     </main>
 
@@ -1081,17 +1081,21 @@
             document.getElementById('gold-rate-chart').parentElement.classList.toggle('chart-empty', history.length === 0);
             if (history.length === 0) {
                 renderStats('gold-stats', [
-                    ['24 Karat today (per gram)', '-'],
-                    ['22 Karat today (per gram)', '-'],
-                    ['18 Karat today (per gram)', '-'],
+                    ['24 Karat (per gram)', '-'],
+                    ['22 Karat (per gram)', '-'],
+                    ['18 Karat (per gram)', '-'],
                 ]);
                 return;
             }
 
-            const points = history.slice(-(data.chart_days || 30));
+            // Days within the last chart_days days (Tanishq rates are not reported every day)
+            const lastDay = new Date(history[history.length - 1].date + 'T00:00:00Z');
+            const firstDay = new Date(lastDay.getTime() - ((data.chart_days || 30) - 1) * 86400000);
+            const points = history.filter(p => new Date(p.date + 'T00:00:00Z') >= firstDay);
             const latest = points[points.length - 1];
             renderStats('gold-stats', ['24k', '22k', '18k'].map(key =>
-                [`${GOLD_VARIANTS[key].label} today (per gram)`, formatRupees(latest[key])]));
+                // The date of the latest reported rate (not always today)
+                [`${GOLD_VARIANTS[key].label} on ${shortDate(latest.date)} (per gram)`, formatRupees(latest[key])]));
 
             const shown = goldVariant === 'all' ? ['18k', '22k', '24k'] : [goldVariant];
             const datasets = shown.map(key => ({
