@@ -98,7 +98,7 @@
       <a href="usage.html" class="navlink on">Daily usage</a>
       <a href="monthly.html" class="navlink">Monthly usage</a>
     </nav>
-    <span class="label" style="margin-left:auto">Last updated (Indian time): <b id="updTime">—</b></span>
+    <span class="label" style="margin-left:auto">Last checked (Indian time): <b id="updTime">—</b> <span id="dataAsOf"></span></span>
     <span class="pill not flash" id="status"><i></i> Not Updated</span>
   </header>
 
@@ -138,7 +138,7 @@
 (() => {
   const POLL_MS = 30000;
   const RELOAD_MS = 300000;
-  let lastRaw = null, loaded = false, offline = false, DAYS = [], TOTAL = 0, lastT = null, costT = null;
+  let lastRaw = null, loaded = false, offline = false, DAYS = [], TOTAL = 0, lastT = null, costT = null, checkedT = null;
   let readings = [], COST = {}, mode = "cost";   // "cost" = API cost, "credit" = balance drop
 
   const $ = id => document.getElementById(id);
@@ -214,12 +214,14 @@
     }
     $("total").textContent = money(TOTAL);
     $("totalInr").textContent = inr(TOTAL);
-    // "API cost" shows the cost data's refresh time; "Credit used" the last balance reading
-    const shownT = mode === "cost" && costT ? costT : lastT;
+    // "API cost": when the workflow last checked Anthropic, and how fresh Anthropic's data is;
+    // "Credit used": the last balance reading
+    const shownT = mode === "cost" && (checkedT || costT) ? (checkedT || costT) : lastT;
     if (shownT) $("updTime").textContent = fmtIST(shownT);
+    $("dataAsOf").textContent = mode === "cost" && costT ? "· Anthropic data as of " + fmtIST(costT) : "";
 
     const W = chart.clientWidth, H = chart.clientHeight;
-    const m = { l: 44, r: 16, t: 92, b: 40 };
+    const m = { l: 44, r: 16, t: 160, b: 40 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const n = DAYS.length;
     const maxAmt = Math.max(...DAYS.map(d => d.amt), 0.01);
@@ -292,7 +294,6 @@
       const costRaw = (cRes && cRes.ok) ? await cRes.text() : "{}";
       const metaRaw = (mRes && mRes.ok) ? await mRes.text() : "{}";
       offline = false;
-      setLive(true);
       const combined = raw + "||" + costRaw + "||" + metaRaw;
       if (combined !== lastRaw) {
         lastRaw = combined;
@@ -302,18 +303,22 @@
         lastT = readings.length ? readings[readings.length - 1].t : null;
         COST = JSON.parse(costRaw || "{}");
         // When Anthropic last refreshed the cost data (written by fetch_cost.py)
-        const refreshed = JSON.parse(metaRaw || "{}").data_refreshed_at;
-        costT = refreshed ? new Date(refreshed) : null;
+        const meta = JSON.parse(metaRaw || "{}");
+        costT = meta.data_refreshed_at ? new Date(meta.data_refreshed_at) : null;
+        checkedT = meta.checked_at ? new Date(meta.checked_at) : null;
         loaded = true;
         recompute();
         render();
       }
+      setLive(checkFresh(checkedT));
     } catch (e) {
       offline = true;
       setLive(false);
       if (!DAYS.length) render();
     }
   }
+  // The workflow checks Anthropic every 15 minutes; over 45 minutes without a check = not updated
+  function checkFresh(t) { return !t || Date.now() - t < 45 * 60000; }
   function setLive(on) {
     const s = $("status");
     s.className = "pill flash " + (on ? "ok" : "not");

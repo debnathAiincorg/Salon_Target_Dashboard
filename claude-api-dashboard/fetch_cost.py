@@ -105,6 +105,8 @@ def update_balance_estimate(hourly_rows, anchor, refreshed_at):
     readings = load_json(BALANCE_FILE, [])
     if readings and datetime.fromisoformat(readings[-1]["t"]) >= refreshed_at:
         return False  # already have a reading for this data refresh (or a newer one)
+    if readings and readings[-1].get("balance") == point["balance"]:
+        return False  # no change; the page draws the flat line up to the last check itself
     readings.append(point)
     BALANCE_FILE.write_text(json.dumps(readings, indent=1) + "\n", encoding="utf-8")
     print(f"Estimated balance ${point['balance']:,.2f} (${anchor['balance']:,.2f} on {anchor['as_of']} "
@@ -165,6 +167,9 @@ def main():
     meta = {
         "data_refreshed_at": refreshed_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
         "source": "Anthropic Usage and Cost Analytics API",
+        # When this script last asked Anthropic (every run), so the pages can show that the
+        # check is running even when Anthropic has no new data
+        "checked_at": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
     }
     changed = write_if_changed(META_FILE, meta, indent=2) or changed
     if anchor:

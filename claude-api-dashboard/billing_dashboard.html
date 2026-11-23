@@ -121,7 +121,7 @@
       <a href="usage.html" class="navlink">Daily usage</a>
       <a href="monthly.html" class="navlink">Monthly usage</a>
     </nav>
-    <span class="label" style="margin-left:auto">Last updated (Indian time): <b id="updTime">—</b></span>
+    <span class="label" style="margin-left:auto">Last checked (Indian time): <b id="updTime">—</b> <span id="dataAsOf"></span></span>
     <span class="pill not flash" id="status"><i></i> Not Updated</span>
   </header>
 
@@ -165,7 +165,7 @@
   // The page re-reads it every 60 seconds and redraws when it changes.
   const POLL_MS = 30000;        // check billing_data.json every 30 seconds
   const RELOAD_MS = 300000;     // reload the whole page every 5 min as a safety net
-  let ALL = [], lastRaw = null, loaded = false, offline = false;
+  let ALL = [], lastRaw = null, loaded = false, offline = false, checkedT = null, costT = null;
 
   const $ = id => document.getElementById(id);
   const money = v => "$" + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -185,7 +185,13 @@
 
   function render() {
     chart.querySelectorAll("svg,.empty").forEach(n => n.remove());
-    const pts = pick();
+    let pts = pick();
+    // The balance has not changed since the last point: carry it on to the last check, so
+    // the line reaches "now" (fetch_cost.py only saves a point when the balance changes)
+    if (pts.length && checkedT && checkedT > pts[pts.length - 1].t) {
+      const lastP = pts[pts.length - 1];
+      pts = pts.concat([{ t: checkedT, v: lastP.v, est: lastP.est, carried: true }]);
+    }
     if (!pts.length) {
       const msg = offline
         ? 'Could not read billing_data.json.'
@@ -207,7 +213,8 @@
     $("chg").textContent = (diff >= 0 ? "+" : "−") + money(Math.abs(diff)) +
       " (" + (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%) " + (range ? "this period" : "since first reading");
     const vals = pts.map(p => p.v);
-    $("updTime").textContent = fmtIST(pts[pts.length - 1].t);
+    $("updTime").textContent = fmtIST(checkedT || pts[pts.length - 1].t);
+    $("dataAsOf").textContent = costT ? "· Anthropic data as of " + fmtIST(costT) : "";
 
     const W = chart.clientWidth, H = chart.clientHeight;
     const m = { l: 8, r: 64, t: 110, b: 26 };  // extra top room for the balance overlay + big labels
@@ -255,15 +262,26 @@
       el("path", { d: line + `L${x(t1)},${m.t + ih}L${x(t0)},${m.t + ih}Z`, fill: "url(#fill)" }, svg);
       el("path", { d: line, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
     }
-    // a dot at every point, but the amount only where the value CHANGED
+    // A dot and an amount only where the balance CHANGED (plus the first point). Labels that
+    // would overlap one already drawn go below the dot instead, or are left out.
+    const placed = [];
+    const LW = 112, LH = 60;  // label box (2 lines: $ and ₹)
+    const fits = (bx, by) => by > 0 && by + LH < H - m.b &&
+      !(by < m.t + 10 && bx < m.l + 330) &&   // behind the balance box, top-left
+      placed.every(b => Math.abs(b.x - bx) > LW || Math.abs(b.y - by) > LH);
     pts.forEach((p, i) => {
+      if (p.carried || (i !== 0 && p.v === pts[i - 1].v)) return;
       const px = x(+p.t), py = y(p.v);
       el("circle", { cx: px, cy: py, r: 3, fill: color, stroke: "var(--panel)", "stroke-width": 1.5 }, svg);
-      if (i !== 0 && p.v === pts[i - 1].v) return;  // same as before -> no label
-      const anchor = i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle";
-      // if the label would land behind the top-left balance box, drop it below the dot
-      const below = (py - 46) < (m.t + 6) && px < m.l + 300;
-      const t = el("text", { x: px, y: below ? py + 30 : py - 46, class: "ptlabel", "text-anchor": anchor }, svg);
+      const anchor = i === 0 ? "start" : px > m.l + iw - LW / 2 ? "end" : "middle";
+      const bx = anchor === "start" ? px + LW / 2 : anchor === "end" ? px - LW / 2 : px;
+      let ty = null;
+      for (const cand of [py - 46, py + 30]) {
+        if (fits(bx, cand - 28)) { ty = cand; break; }
+      }
+      if (ty === null) return;  // no room: the hover tooltip still shows the amount
+      placed.push({ x: bx, y: ty - 28 });
+      const t = el("text", { x: px, y: ty, class: "ptlabel", "text-anchor": anchor }, svg);
       el("tspan", { x: px }, t).textContent = money(p.v);
       el("tspan", { x: px, dy: "1.2em", class: "inr" }, t).textContent = inr(p.v);
     });
@@ -312,13 +330,21 @@
   // Re-read billing_data.json and redraw when it has changed.
   async function poll() {
     try {
-      const res = await fetch("billing_data.json?_=" + Date.now(), { cache: "no-store" });
+      const [res, mRes] = await Promise.all([
+        fetch("billing_data.json?_=" + Date.now(), { cache: "no-store" }),
+        fetch("cost_meta.json?_=" + Date.now(), { cache: "no-store" }).catch(() => null),
+      ]);
       if (!res.ok) throw new Error(res.status);
       const raw = await res.text();
+      const metaRaw = (mRes && mRes.ok) ? await mRes.text() : "{}";
       offline = false;
-      setLive(true);
-      if (raw !== lastRaw) {
-        lastRaw = raw;
+      const meta = JSON.parse(metaRaw || "{}");
+      checkedT = meta.checked_at ? new Date(meta.checked_at) : null;
+      costT = meta.data_refreshed_at ? new Date(meta.data_refreshed_at) : null;
+      // The workflow checks Anthropic every 15 minutes; over 45 minutes without a check = not updated
+      setLive(!checkedT || Date.now() - checkedT < 45 * 60000);
+      if (raw + metaRaw !== lastRaw) {
+        lastRaw = raw + metaRaw;
         ALL = JSON.parse(raw || "[]")
           .map(p => ({ t: new Date(p.t), v: +p.balance, est: !!p.estimated }))
           .sort((a, b) => a.t - b.t);
