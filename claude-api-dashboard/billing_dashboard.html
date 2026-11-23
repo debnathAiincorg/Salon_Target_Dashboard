@@ -79,9 +79,9 @@
   .chart { position: relative; margin-top: 0; flex: 1; min-height: 300px; }
   svg { display: block; width: 100%; height: 100%; }
   .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-  .ptlabel { fill: var(--text); font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums;
+  .ptlabel { fill: var(--text); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
     stroke: var(--panel); stroke-width: 5px; paint-order: stroke; }
-  .ptlabel .inr { fill: var(--accent); font-size: 22px; font-weight: 600; }
+  .ptlabel .inr { fill: var(--accent); font-size: 16px; font-weight: 600; }
   .tip {
     position: absolute; pointer-events: none; background: #fff; color: var(--text); border: 1px solid var(--border);
     border-radius: 8px; padding: 6px 10px; font-size: 12px; white-space: nowrap; display: none;
@@ -262,28 +262,40 @@
       el("path", { d: line + `L${x(t1)},${m.t + ih}L${x(t0)},${m.t + ih}Z`, fill: "url(#fill)" }, svg);
       el("path", { d: line, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
     }
-    // A dot and an amount only where the balance CHANGED (plus the first point). Labels that
-    // would overlap one already drawn go below the dot instead, or are left out.
+    // A dot and an amount at every point where the balance CHANGED (plus the first point).
+    // Each label tries several spots around its dot (above, below, left, right, further out)
+    // and takes the first one that overlaps no other label and no other dot.
     const placed = [];
-    const LW = 112, LH = 60;  // label box (2 lines: $ and ₹)
-    const fits = (bx, by) => by > 0 && by + LH < H - m.b &&
-      !(by < m.t + 10 && bx < m.l + 330) &&   // behind the balance box, top-left
-      placed.every(b => Math.abs(b.x - bx) > LW || Math.abs(b.y - by) > LH);
-    pts.forEach((p, i) => {
-      if (p.carried || (i !== 0 && p.v === pts[i - 1].v)) return;
-      const px = x(+p.t), py = y(p.v);
+    const LW = 80, LH = 44;   // label box (2 lines: $ and ₹); box top = baseline - 18
+    const dots = pts.filter((p, i) => !p.carried && (i === 0 || p.v !== pts[i - 1].v))
+      .map(p => ({ p, px: x(+p.t), py: y(p.v) }));
+    const boxOf = (lx, ty, anchor) => {
+      const left = anchor === "start" ? lx : anchor === "end" ? lx - LW : lx - LW / 2;
+      return { l: left, r: left + LW, t: ty - 18, b: ty - 18 + LH };
+    };
+    const hits = (bx, a) => bx.l < a.r && a.l < bx.r && bx.t < a.b && a.t < bx.b;
+    const fits = bx => bx.t > m.t - 40 && bx.b < m.t + ih && bx.l >= m.l && bx.r <= m.l + iw &&
+      !(bx.t < m.t + 10 && bx.l < m.l + 330) &&             // behind the balance box, top-left
+      placed.every(a => !hits(bx, a)) &&
+      dots.every(d => !hits(bx, { l: d.px - 5, r: d.px + 5, t: d.py - 5, b: d.py + 5 }));
+    dots.forEach(({ p, px, py }) => {
       el("circle", { cx: px, cy: py, r: 3, fill: color, stroke: "var(--panel)", "stroke-width": 1.5 }, svg);
-      const anchor = i === 0 ? "start" : px > m.l + iw - LW / 2 ? "end" : "middle";
-      const bx = anchor === "start" ? px + LW / 2 : anchor === "end" ? px - LW / 2 : px;
-      let ty = null;
-      for (const cand of [py - 46, py + 30]) {
-        if (fits(bx, cand - 28)) { ty = cand; break; }
-      }
-      if (ty === null) return;  // no room: the hover tooltip still shows the amount
-      placed.push({ x: bx, y: ty - 28 });
-      const t = el("text", { x: px, y: ty, class: "ptlabel", "text-anchor": anchor }, svg);
-      el("tspan", { x: px }, t).textContent = money(p.v);
-      el("tspan", { x: px, dy: "1.2em", class: "inr" }, t).textContent = inr(p.v);
+    });
+    dots.forEach(({ p, px, py }, i) => {
+      const cands = [
+        [px, py - 32, "middle"], [px, py + 24, "middle"],
+        [px + 8, py - 4, "start"], [px - 8, py - 4, "end"],
+        [px + 8, py - 32, "start"], [px - 8, py - 32, "end"],
+        [px + 8, py + 24, "start"], [px - 8, py + 24, "end"],
+        [px, py - 76, "middle"], [px, py + 68, "middle"],
+      ];
+      let pick = cands.find(([lx, ty, an]) => fits(boxOf(lx, ty, an)));
+      if (!pick) pick = cands.find(([lx, ty, an]) => { const bx = boxOf(lx, ty, an); return bx.l >= m.l && bx.r <= m.l + iw; }) || cands[0];
+      const [lx, ty, an] = pick;
+      placed.push(boxOf(lx, ty, an));
+      const t = el("text", { x: lx, y: ty, class: "ptlabel", "text-anchor": an }, svg);
+      el("tspan", { x: lx }, t).textContent = money(p.v);
+      el("tspan", { x: lx, dy: "1.15em", class: "inr" }, t).textContent = inr(p.v);
     });
 
     // last-price dashed line + dot

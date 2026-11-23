@@ -583,7 +583,7 @@
         <!-- Salon data status: last update time, then green "Updated" or red "Not Updated" (see renderUpdateStatus).
              Shown only on the Salon charts; the other dashboards show their own status. -->
         <div class="last-updated" id="last-updated" hidden>
-            Last updated (Indian time): <b id="last-updated-text"></b>
+            <span id="last-updated-label">Last updated</span> (Indian time): <b id="last-updated-text"></b><span id="last-updated-extra"></span>
         </div>
         <div class="update-status" id="update-status" role="status" hidden>
             <span class="status-light"></span>
@@ -1282,7 +1282,13 @@
                 if (!time || !light) {
                     return null;
                 }
-                return { time: time.textContent.trim() || '-', isUpdated: light.classList.contains('ok') };
+                const asOf = doc.getElementById('dataAsOf');
+                return {
+                    label: 'Last checked',
+                    time: time.textContent.trim() || '-',
+                    extra: asOf ? asOf.textContent.trim() : '',
+                    isUpdated: light.classList.contains('ok'),
+                };
             } catch (error) {
                 return null;
             }
@@ -1312,8 +1318,12 @@
             }
             status.className = `update-status ${info.isUpdated ? 'updated' : 'pending'}`;
             document.getElementById('update-status-text').textContent = info.isUpdated ? 'Updated' : 'Not Updated';
-            status.title = `Last updated: ${info.time}`;
+            const label = info.label || 'Last updated';
+            status.title = `${label}: ${info.time}`;
+            document.getElementById('last-updated-label').textContent = label;
             document.getElementById('last-updated-text').textContent = info.time;
+            // Claude API: "· Anthropic data as of ..." after the check time
+            document.getElementById('last-updated-extra').textContent = info.extra ? ` ${info.extra}` : '';
         }
 
         /*
@@ -1504,7 +1514,7 @@
                 // Claude API: show its "Last updated" and status light in the nav bar, and
                 // follow them when the page refreshes its data
                 if (slide.dataset.embed === 'claude') {
-                    const watched = ['updTime', 'status'].map(id => doc.getElementById(id)).filter(Boolean);
+                    const watched = ['updTime', 'status', 'dataAsOf'].map(id => doc.getElementById(id)).filter(Boolean);
                     const observer = new MutationObserver(renderNavStatus);
                     for (const element of watched) {
                         observer.observe(element, { attributes: true, childList: true, characterData: true, subtree: true });
