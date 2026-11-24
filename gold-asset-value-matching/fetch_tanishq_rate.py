@@ -204,21 +204,25 @@ def accept(history, point, warnings):
     return True
 
 
-def mia_rates(session):
-    """{date: point} of every day in Tanishq's rate table on the Mia by Tanishq page."""
-    robots = urllib.robotparser.RobotFileParser()
-    robots.parse(get(session, MIA_ROBOTS_URL).splitlines())
-    if not robots.can_fetch(USER_AGENT, MIA_URL):
-        raise RuntimeError("the Mia rate page is not allowed by its robots.txt")
-    # Read with curl (same honest User-Agent): the site lets curl in but sends Python's
-    # requests library a challenge page. If curl is ever challenged too, this fails and
-    # the Goodreturns backup is used - the challenge is never worked around.
+def curl_get(url):
+    """Read a Mia page with curl (same honest User-Agent). The site lets curl in but sends
+    Python's requests library a challenge page. If curl is ever challenged too, this fails
+    and the Goodreturns backup is used - the challenge is never worked around."""
     result = subprocess.run(
-        ["curl", "-sS", "--fail", "--max-time", str(REQUEST_TIMEOUT_SECONDS), "-A", USER_AGENT, MIA_URL],
+        ["curl", "-sS", "--fail", "--max-time", str(REQUEST_TIMEOUT_SECONDS), "-A", USER_AGENT, url],
         capture_output=True, timeout=REQUEST_TIMEOUT_SECONDS + 15)
     if result.returncode != 0:
-        raise RuntimeError(f"could not read the Mia page: {result.stderr.decode(errors='replace').strip()}")
-    page = result.stdout.decode("utf-8", errors="replace")
+        raise RuntimeError(f"could not read {url}: {result.stderr.decode(errors='replace').strip()}")
+    return result.stdout.decode("utf-8", errors="replace")
+
+
+def mia_rates():
+    """{date: point} of every day in Tanishq's rate table on the Mia by Tanishq page."""
+    robots = urllib.robotparser.RobotFileParser()
+    robots.parse(curl_get(MIA_ROBOTS_URL).splitlines())
+    if not robots.can_fetch(USER_AGENT, MIA_URL):
+        raise RuntimeError("the Mia rate page is not allowed by its robots.txt")
+    page = curl_get(MIA_URL)
     found = re.search(r'id="goldRateValues"[^>]*\svalue="([^"]*)"', page) or \
         re.search(r'value="([^"]*GetDailyMetalRates[^"]*)"', page)
     if not found:
@@ -298,16 +302,18 @@ def main():
     source = saved.get("source")
     warnings = []
     try:
-        mia = mia_rates(session)
+        mia = mia_rates()
         history.update(mia)  # Tanishq's own figures replace anything read elsewhere
         source = MIA_SOURCE
         latest = max(mia)
         print(f"Tanishq (Mia) rate table: {len(mia)} days, latest {latest}: 22K Rs {mia[latest]['22k']:,.0f}, "
               f"24K Rs {mia[latest]['24k']:,.0f}, 18K Rs {mia[latest]['18k']:,.0f}")
         mia_checked_at = now.isoformat(timespec="seconds")
+        mia_error = None
     except (requests.RequestException, subprocess.SubprocessError, OSError, RuntimeError, ValueError, KeyError) as e:
         print(f"WARNING: could not read Tanishq's rate from the Mia page ({e}); trying Goodreturns.")
         mia_checked_at = saved.get("mia_checked_at")
+        mia_error = str(e)[:300]  # saved so a failure on GitHub's servers shows in the data file
         if today.isoformat() not in history:
             _, warnings = goodreturns_update(session, history, read_before, today)
 
@@ -325,6 +331,7 @@ def main():
         "history": points,
         "articles_read": sorted(read_before)[-200:],
         "mia_checked_at": mia_checked_at,
+        "mia_error": mia_error,
     }
     OUTPUT_FILE.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
     print(f"{'Saved new rates' if changed else 'No rate changed'}; {len(points)} days in {OUTPUT_FILE.name}.")
