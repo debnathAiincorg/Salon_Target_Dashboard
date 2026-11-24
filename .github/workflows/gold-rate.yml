@@ -2,8 +2,8 @@
 #
 # Runs whenever Power Automate starts the Salon update (every 15 minutes), every day at
 # 10:30 IST as a backup, or with the "Run workflow" button. fetch_tanishq_rate.py reads
-# Tanishq's daily rate from Goodreturns' news articles (Tanishq's own site blocks
-# automated readers); once today's rate is saved, later runs that day stop at once.
+# Tanishq's daily rate table from the Mia by Tanishq website (Tanishq's own rates, the
+# last ~31 days), at most once an hour; Goodreturns' news articles are the backup.
 # No secret is needed. The data file is committed; GitHub Pages republishes the site.
 
 name: Update Gold Rate

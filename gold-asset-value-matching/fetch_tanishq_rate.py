@@ -4,25 +4,21 @@ fetch_tanishq_rate.py
 Saves Tanishq's gold rate (Rs per gram for 22K, 24K and 18K) to gold-rate-data.json,
 which the "Gold Rate Trends" chart on daily-dashboard.html reads.
 
-Source: Goodreturns (www.goodreturns.in) news articles that report Tanishq's daily
-gold rate. Tanishq's own website blocks automated readers, so it is not read here.
-Goodreturns' robots.txt allows reading its news articles and sitemaps; this script
-identifies itself honestly (USER_AGENT), reads only a few pages, and waits between them.
+Main source: Tanishq's own rate table on its Mia by Tanishq website
+(www.miabytanishq.com/en_IN/gold-rate-today). Mia is Tanishq's brand and publishes the
+same daily rates as tanishq.co.in, which blocks automated readers. The page carries the
+last ~31 days of rates as data, so every day, today included, gets Tanishq's exact rate.
+Its robots.txt allows the page; this script identifies itself honestly (USER_AGENT)
+and reads it at most once every MIA_MIN_MINUTES.
 
-How it works:
+Backup source (only if the Mia page cannot be read): Goodreturns (www.goodreturns.in)
+news articles that report Tanishq's daily rate:
     1. Find Goodreturns articles about Tanishq gold rates in its news sitemap (the
        first run also looks back LOOKBACK_DAYS days in the main sitemap).
-    2. Read each article not read before, take the 22K rate per gram and its date
-       (some articles also give earlier days' rates).
-    3. Work out 24K and 18K: Tanishq prices them exactly as 22K x 24/22 and 22K x 18/22,
-       e.g. 22K Rs 11,515 -> 24K Rs 12,562 and 18K Rs 9,421. A per-gram 24K/18K rate the
-       article states is used instead when it agrees with that.
+    2. Read each article not read before, take the 22K rate per gram and its date.
+    3. Work out 24K and 18K: Tanishq prices them exactly as 22K x 24/22 and 22K x 18/22.
     4. Safety checks: a rate outside a plausible range, more than MAX_DAY_CHANGE away
-       from the nearest saved day, or reported with two different values is skipped
-       (and printed as a warning), so a misread never reaches the chart.
-
-Goodreturns does not publish an article every day, so some days have no rate; the
-chart shows only the days that were reported, never invented values.
+       from the nearest saved day, or reported with two different values is skipped.
 
 Run:  python fetch_tanishq_rate.py
 """
@@ -30,6 +26,7 @@ Run:  python fetch_tanishq_rate.py
 import html
 import json
 import re
+import subprocess
 import sys
 import time
 import urllib.robotparser
@@ -41,6 +38,10 @@ import requests
 HERE = Path(__file__).resolve().parent
 OUTPUT_FILE = HERE / "gold-rate-data.json"
 
+MIA_URL = "https://www.miabytanishq.com/en_IN/gold-rate-today"
+MIA_ROBOTS_URL = "https://www.miabytanishq.com/robots.txt"
+MIA_SOURCE = "Tanishq (miabytanishq.com rate page)"
+MIA_MIN_MINUTES = 55      # read the Mia page at most this often (rates can change during the day)
 ROBOTS_URL = "https://www.goodreturns.in/robots.txt"
 NEWS_SITEMAP = "https://www.goodreturns.in/sitemap_news.xml"   # the last ~2 days of news
 MAIN_SITEMAP = "https://www.goodreturns.in/sitemap.xml"        # older articles, for the first run
@@ -203,18 +204,41 @@ def accept(history, point, warnings):
     return True
 
 
-def main():
-    saved = json.loads(OUTPUT_FILE.read_text(encoding="utf-8")) if OUTPUT_FILE.exists() else {}
-    history = {p["date"]: p for p in saved.get("history", []) if "source" in p}  # Tanishq points only
-    read_before = set(saved.get("articles_read", []))
-    today = datetime.now(IST).date()
-    if today.isoformat() in history:
-        print(f"Today's Tanishq rate ({today.isoformat()}) is already saved - nothing to do.")
-        return
+def mia_rates(session):
+    """{date: point} of every day in Tanishq's rate table on the Mia by Tanishq page."""
+    robots = urllib.robotparser.RobotFileParser()
+    robots.parse(get(session, MIA_ROBOTS_URL).splitlines())
+    if not robots.can_fetch(USER_AGENT, MIA_URL):
+        raise RuntimeError("the Mia rate page is not allowed by its robots.txt")
+    # Read with curl (same honest User-Agent): the site lets curl in but sends Python's
+    # requests library a challenge page. If curl is ever challenged too, this fails and
+    # the Goodreturns backup is used - the challenge is never worked around.
+    result = subprocess.run(
+        ["curl", "-sS", "--fail", "--max-time", str(REQUEST_TIMEOUT_SECONDS), "-A", USER_AGENT, MIA_URL],
+        capture_output=True, timeout=REQUEST_TIMEOUT_SECONDS + 15)
+    if result.returncode != 0:
+        raise RuntimeError(f"could not read the Mia page: {result.stderr.decode(errors='replace').strip()}")
+    page = result.stdout.decode("utf-8", errors="replace")
+    found = re.search(r'id="goldRateValues"[^>]*\svalue="([^"]*)"', page) or \
+        re.search(r'value="([^"]*GetDailyMetalRates[^"]*)"', page)
+    if not found:
+        raise RuntimeError("no rate table (goldRateValues) on the Mia page")
+    rates = {}
+    for row in json.loads(html.unescape(found.group(1)))["GetDailyMetalRates"]:
+        day = datetime.strptime(row["Date"], "%d-%m-%Y").date()
+        point = {"date": day.isoformat(), "source": MIA_URL}
+        for karat in ("22", "24", "18"):
+            point[f"{karat}k"] = float(row[f"GoldRate{karat}KT"])
+        if not PLAUSIBLE_22K[0] <= point["22k"] <= PLAUSIBLE_22K[1]:
+            raise RuntimeError(f"implausible 22K rate {point['22k']} for {day}")
+        rates[day.isoformat()] = point
+    if not rates:
+        raise RuntimeError("the Mia rate table is empty")
+    return rates
 
-    session = requests.Session()
-    session.headers["User-Agent"] = USER_AGENT
-    # Read only what Goodreturns' robots.txt allows
+
+def goodreturns_update(session, history, read_before, today):
+    """Backup: add days from Goodreturns' Tanishq articles. Returns (days added, warnings)."""
     robots = urllib.robotparser.RobotFileParser()
     robots.parse(get(session, ROBOTS_URL).splitlines())
 
@@ -227,10 +251,9 @@ def main():
         articles += tanishq_articles(get(session, MAIN_SITEMAP), today - timedelta(days=LOOKBACK_DAYS))
     new_articles = [url for url, _ in dict.fromkeys(articles) if url not in read_before]
     new_articles = [url for url in dict.fromkeys(new_articles) if allowed(url)]
-
     if not new_articles:
-        print("No new Tanishq gold-rate article on Goodreturns - nothing changed.")
-        return
+        print("No new Tanishq gold-rate article on Goodreturns.")
+        return 0, []
 
     warnings, added = [], 0
     for i, url in enumerate(new_articles):
@@ -246,30 +269,67 @@ def main():
             warnings.append(f"no publish date in {url} - skipped")
             continue
         rates = choose_rates(extract_rates(text, published_day), url, warnings)
-        # the article's own day first, then the earlier days it mentions
         for day in sorted(rates, reverse=True):
+            if day in history and "miabytanishq" in history[day].get("source", ""):
+                continue  # Tanishq's own rate is already saved for this day
             if accept(history, rates[day], warnings):
                 added += 1
                 print(f"{day}: 22K Rs {rates[day]['22k']:,.0f}, 24K Rs {rates[day]['24k']:,.0f}, "
                       f"18K Rs {rates[day]['18k']:,.0f}  ({url.rsplit('/', 1)[-1][:60]})")
+    return added, warnings
+
+
+def main():
+    saved = json.loads(OUTPUT_FILE.read_text(encoding="utf-8")) if OUTPUT_FILE.exists() else {}
+    history = {p["date"]: p for p in saved.get("history", []) if "source" in p}  # Tanishq points only
+    read_before = set(saved.get("articles_read", []))
+    now = datetime.now(IST)
+    today = now.date()
+
+    checked = saved.get("mia_checked_at")
+    if checked and today.isoformat() in history and \
+            now - datetime.fromisoformat(checked) < timedelta(minutes=MIA_MIN_MINUTES):
+        print(f"Tanishq's rate was read less than {MIA_MIN_MINUTES} minutes ago - nothing to do.")
+        return
+
+    session = requests.Session()
+    session.headers["User-Agent"] = USER_AGENT
+    before = json.dumps(sorted(history.items()))
+    source = saved.get("source")
+    warnings = []
+    try:
+        mia = mia_rates(session)
+        history.update(mia)  # Tanishq's own figures replace anything read elsewhere
+        source = MIA_SOURCE
+        latest = max(mia)
+        print(f"Tanishq (Mia) rate table: {len(mia)} days, latest {latest}: 22K Rs {mia[latest]['22k']:,.0f}, "
+              f"24K Rs {mia[latest]['24k']:,.0f}, 18K Rs {mia[latest]['18k']:,.0f}")
+        mia_checked_at = now.isoformat(timespec="seconds")
+    except (requests.RequestException, subprocess.SubprocessError, OSError, RuntimeError, ValueError, KeyError) as e:
+        print(f"WARNING: could not read Tanishq's rate from the Mia page ({e}); trying Goodreturns.")
+        mia_checked_at = saved.get("mia_checked_at")
+        if today.isoformat() not in history:
+            _, warnings = goodreturns_update(session, history, read_before, today)
 
     for warning in warnings:
         print("WARNING:", warning)
 
+    changed = json.dumps(sorted(history.items())) != before
     cutoff = (today - timedelta(days=KEEP_DAYS)).isoformat()
     points = sorted((p for d, p in history.items() if d >= cutoff), key=lambda p: p["date"])
     output = {
-        "last_updated": format_ist_timestamp() if added else saved.get("last_updated", format_ist_timestamp()),
-        "source": "Tanishq gold rate as reported by Goodreturns (goodreturns.in)",
+        "last_updated": format_ist_timestamp() if changed else saved.get("last_updated", format_ist_timestamp()),
+        "source": source or MIA_SOURCE,
         "unit": "INR per gram",
         "chart_days": CHART_DAYS,
         "history": points,
         "articles_read": sorted(read_before)[-200:],
+        "mia_checked_at": mia_checked_at,
     }
     OUTPUT_FILE.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
-    print(f"Read {len(new_articles)} new article(s), saved {added} day(s); {len(points)} days in {OUTPUT_FILE.name}.")
+    print(f"{'Saved new rates' if changed else 'No rate changed'}; {len(points)} days in {OUTPUT_FILE.name}.")
     if not points:
-        sys.exit("No Tanishq rate could be read from Goodreturns.")
+        sys.exit("No Tanishq rate could be read.")
 
 
 if __name__ == "__main__":

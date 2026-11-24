@@ -656,7 +656,7 @@
             <div class="chart-container">
                 <canvas id="gold-rate-chart"></canvas>
             </div>
-            <div class="gold-note">Tanishq gold rate in &#8377; per gram, as reported by Goodreturns (goodreturns.in). Solid dot: reported that day. Hollow dot: no report that day, last known rate shown.</div>
+            <div class="gold-note">Tanishq gold rate in &#8377; per gram, from Tanishq&#8217;s own rate table (Mia by Tanishq). Solid dot: Tanishq&#8217;s rate that day. Hollow dot: no rate for that day, last known rate shown.</div>
         </section>
     </main>
 
@@ -1088,8 +1088,8 @@
                 return;
             }
 
-            // Always the last chart_days calendar days, ending today (India time). Goodreturns does
-            // not report Tanishq's rate every day: a day without a report repeats the last known
+            // Always the last chart_days calendar days, ending today (India time). Tanishq's
+            // rate table normally covers every day; a day without a rate repeats the last known
             // rate and is drawn with a hollow dot ("filled in"); reported days have a solid dot.
             const byDate = new Map(history.map(p => [p.date, p]));
             const todayIst = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
