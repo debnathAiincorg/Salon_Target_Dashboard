@@ -275,5 +275,6 @@
     "https://www.goodreturns.in/news/rs-25500-crash-in-gold-prices-today-at-tanishq-ibja-malabar-joyalukkas-24k-22k-18k-gold-rates-nov-18-1547817.html",
     "https://www.goodreturns.in/personal-finance/gold-rate-today-02-11-2026-check-24k-and-22k-gold-price-at-tanishq-malabar-joyalukkas-kalyan-1544621.html"
   ],
-  "mia_checked_at": "2026-11-24T10:01:14+05:30"
+  "mia_checked_at": "2026-11-24T10:01:14+05:30",
+  "mia_error": "could not read https://www.miabytanishq.com/en_IN/gold-rate-today: curl: (22) The requested URL returned error: 403"
 }
