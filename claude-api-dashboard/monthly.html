@@ -174,7 +174,20 @@
       const k = d.slice(0, 7);
       spend[k] = (spend[k] || 0) + costMap[d];
     }
-    return Object.keys(spend).sort().map(k => ({ key: k, amt: spend[k] }));
+    // every month from the first one with cost up to this month, so a month with no
+    // spend shows as $0 instead of being left out
+    const keys = Object.keys(spend).sort();
+    if (!keys.length) return [];
+    const out = [];
+    let [y, m] = keys[0].split("-").map(Number);
+    const last = monthKey(new Date());
+    for (;;) {
+      const k = `${y}-${String(m).padStart(2, "0")}`;
+      if (k > last && k > keys[keys.length - 1]) break;
+      out.push({ key: k, amt: spend[k] || 0 });
+      if (++m > 12) { m = 1; y++; }
+    }
+    return out;
   }
 
   function recompute() {

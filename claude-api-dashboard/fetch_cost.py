@@ -50,6 +50,7 @@ META_FILE = HERE / "cost_meta.json"
 BALANCE_FILE = HERE / "billing_data.json"     # balance readings shown on the Balance page
 ANCHOR_FILE = HERE / "balance_anchor.json"    # last real balance the estimate starts from
 LOOKBACK_DAYS = 30   # days of daily cost refreshed on each run
+HISTORY_START = "2026-01-01"  # first run reads all cost since this day, so the monthly chart has every month
 MAX_SPAN_DAYS = 30   # the API allows at most 31 days per request
 
 
@@ -123,6 +124,10 @@ def main():
     now = datetime.now(timezone.utc)
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     start = today - timedelta(days=LOOKBACK_DAYS)
+    # Once, read the whole history (cost_meta.json then records it as done)
+    history_done = load_json(META_FILE, {}).get("history_from") == HISTORY_START
+    if not history_done:
+        start = min(start, datetime.fromisoformat(HISTORY_START).replace(tzinfo=timezone.utc))
     anchor = load_json(ANCHOR_FILE, None)
     # Hourly cost is needed for today (daily buckets leave out the unfinished day) and,
     # for the balance estimate, since the last real balance
@@ -170,6 +175,8 @@ def main():
         # When this script last asked Anthropic (every run), so the pages can show that the
         # check is running even when Anthropic has no new data
         "checked_at": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
+        # Cost is saved for every day since this date
+        "history_from": HISTORY_START,
     }
     changed = write_if_changed(META_FILE, meta, indent=2) or changed
     if anchor:
