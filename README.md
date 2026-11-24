@@ -7,7 +7,7 @@ A full-stack sales dashboard that reads live data from SharePoint via Microsoft 
 `daily-dashboard.html` shows everything in one full-screen rotation (10 seconds per page):
 Salon (Monthly, Weekly, Yearly) → Claude API (Balance, Daily usage, Monthly usage) →
 Gold (Rate trends). The Claude API pages are shown inside it in frames; they also still work
-on their own. The Gold Rate Trends chart shows the last 30 days of Tanishq's 24K / 22K / 18K
+on their own. The Gold Rate Trends chart shows the last 31 days of Tanishq's 24K / 22K / 18K
 gold rate in ₹ per gram, read from Tanishq's own daily rate table on its Mia by Tanishq website
 (the last ~31 days, today included). If that page cannot be read, Goodreturns' news articles
 about Tanishq's rate are used as a backup. A day without any rate repeats the last known rate
