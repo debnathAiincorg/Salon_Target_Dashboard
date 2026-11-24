@@ -1152,7 +1152,16 @@
                             grid: { color: 'rgba(0, 0, 0, 0.08)' },
                         },
                         x: {
-                            ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 12 },
+                            ticks: {
+                                maxRotation: 0,
+                                autoSkip: false,
+                                // Date labels counted back from the last day, so today's date is
+                                // always shown; as many as fit (about one per 70px)
+                                callback: function (value, index, ticks) {
+                                    const step = Math.max(1, Math.ceil(ticks.length / Math.max(2, Math.floor(this.chart.width / 70))));
+                                    return (ticks.length - 1 - index) % step === 0 ? this.getLabelForValue(value) : '';
+                                },
+                            },
                             grid: { display: false },
                         },
                     },
