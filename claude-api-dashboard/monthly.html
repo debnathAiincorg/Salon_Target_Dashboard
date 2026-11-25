@@ -309,8 +309,8 @@
       if (!MONTHS.length) render();
     }
   }
-  // The workflow checks Anthropic every 15 minutes; over 45 minutes without a check = not updated
-  function checkFresh(t) { return !t || Date.now() - t < 45 * 60000; }
+  // The workflow checks Anthropic every hour (Power Automate trigger); over 75 minutes without a check = not updated
+  function checkFresh(t) { return !t || Date.now() - t < 75 * 60000; }
   function setLive(on) {
     const s = $("status");
     s.className = "pill flash " + (on ? "ok" : "not");

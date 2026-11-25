@@ -371,8 +371,8 @@
       const meta = JSON.parse(metaRaw || "{}");
       checkedT = meta.checked_at ? new Date(meta.checked_at) : null;
       costT = meta.data_refreshed_at ? new Date(meta.data_refreshed_at) : null;
-      // The workflow checks Anthropic every 15 minutes; over 45 minutes without a check = not updated
-      setLive(!checkedT || Date.now() - checkedT < 45 * 60000);
+      // The workflow checks Anthropic every hour (Power Automate trigger); over 75 minutes without a check = not updated
+      setLive(!checkedT || Date.now() - checkedT < 75 * 60000);
       if (raw + metaRaw !== lastRaw) {
         lastRaw = raw + metaRaw;
         ALL = JSON.parse(raw || "[]")

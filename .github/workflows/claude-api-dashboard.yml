@@ -1,7 +1,7 @@
 # Claude API dashboard (files in claude-api-dashboard/).
 #
 # Runs whenever Power Automate starts the Salon update (repository dispatch event
-# "update-dashboard", every 15 minutes), on the old "fetch-balance" event, every hour
+# "update-dashboard", every hour), on the old "fetch-balance" event, every hour
 # as a backup, or with the "Run workflow" button.
 #
 # fetch_cost.py reads the daily API cost from Anthropic's official Usage and Cost
@@ -20,7 +20,7 @@ on:
   schedule:
     - cron: "17 * * * *"   # every hour, at minute 17
   repository_dispatch:
-    # update-dashboard: the Salon trigger Power Automate sends every 15 minutes
+    # update-dashboard: the Salon trigger Power Automate sends every hour
     types: [update-dashboard, fetch-balance]
   workflow_dispatch:
 

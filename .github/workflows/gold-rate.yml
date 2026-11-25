@@ -1,6 +1,6 @@
 # Gold Rate Trends chart: Tanishq's gold rate (data in gold-asset-value-matching/gold-rate-data.json).
 #
-# Runs whenever Power Automate starts the Salon update (every 15 minutes), every day at
+# Runs whenever Power Automate starts the Salon update (every hour), every day at
 # 10:30 IST as a backup, or with the "Run workflow" button. fetch_tanishq_rate.py reads
 # Tanishq's daily rate table from the Mia by Tanishq website (Tanishq's own rates, the
 # last ~31 days), at most once an hour; Goodreturns' news articles are the backup.
@@ -9,7 +9,7 @@
 name: Update Gold Rate
 
 on:
-  # The Salon trigger Power Automate sends every 15 minutes
+  # The Salon trigger Power Automate sends every hour
   repository_dispatch:
     types: [update-dashboard]
   schedule:
