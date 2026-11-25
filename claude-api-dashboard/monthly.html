@@ -51,7 +51,7 @@
     padding: 20px; height: 100%; display: flex; flex-direction: column; }
   .overlay { position: absolute; top: 16px; left: 20px; right: 20px; z-index: 2; pointer-events: none;
     text-shadow: 0 0 6px #fff, 0 0 6px #fff, 0 0 6px #fff; }
-  .overlay .brand { font-size: 15px; font-weight: 600; margin-bottom: 6px; text-align: center; }
+  .overlay .brand { font-size: 36px; font-weight: 700; color: #222; margin-bottom: 6px; text-align: center; }  /* same size as the other dashboards' chart titles */
   .overlay .label { color: var(--muted); font-size: 13px; }
   .overlay .total-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .overlay .total { font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -215,7 +215,7 @@
     $("dataAsOf").textContent = mode === "cost" && costT ? "· Anthropic data as of " + fmtIST(costT) : "";
 
     const W = chart.clientWidth, H = chart.clientHeight;
-    const m = { l: 44, r: 16, t: 160, b: 34 };
+    const m = { l: 44, r: 16, t: 190, b: 34 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const n = MONTHS.length;
     const maxAmt = Math.max(...MONTHS.map(d => d.amt), 0.01);

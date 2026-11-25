@@ -287,7 +287,7 @@
 
         .chart-title {
             order: 1;
-            font-size: 18px;
+            font-size: 36px;
             font-weight: 700;
             color: #222;
             text-align: center;
@@ -305,24 +305,25 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            padding: 12px 20px;
+            gap: 2px;
+            padding: 8px 14px;
             background-color: #f5fafe;
             border: 1px solid #d6e9f8;
-            border-left: 6px solid #1ca0f2;  /* chart blue */
+            border-left: 4px solid #1ca0f2;  /* chart blue */
             border-radius: 8px;
         }
 
         .kpi-label {
-            font-size: 24px;
-            line-height: 1.2;
+            font-size: 12px;
             color: #555;
-            /* Wraps onto a second line if the card is too narrow, so nothing is cut */
-            white-space: normal;
+            /* One line; cut with "..." only if the card is too narrow */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .kpi-value {
-            font-size: 44px;
+            font-size: 22px;
             font-weight: 700;
             line-height: 1.2;
             color: #000;

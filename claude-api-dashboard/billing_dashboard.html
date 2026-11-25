@@ -41,7 +41,7 @@
   .card { position: relative; }
   .overlay { position: absolute; top: 16px; left: 20px; right: 20px; z-index: 2; pointer-events: none;
     text-shadow: 0 0 6px #fff, 0 0 6px #fff, 0 0 6px #fff; }
-  .overlay .brand { font-size: 15px; font-weight: 600; margin-bottom: 6px; text-align: center; }
+  .overlay .brand { font-size: 36px; font-weight: 700; color: #222; margin-bottom: 6px; text-align: center; }  /* same size as the other dashboards' chart titles */
   .overlay .price { font-size: 30px; line-height: 1.1; }
   .overlay .price-inr { font-size: 20px; font-weight: 600; color: var(--accent); }
   .overlay .price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
@@ -217,7 +217,7 @@
     $("dataAsOf").textContent = costT ? "· Anthropic data as of " + fmtIST(costT) : "";
 
     const W = chart.clientWidth, H = chart.clientHeight;
-    const m = { l: 8, r: 64, t: 110, b: 26 };  // extra top room for the balance overlay + big labels
+    const m = { l: 8, r: 64, t: 135, b: 26 };  // extra top room for the balance overlay + big labels
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     let lo = Math.min(...vals), hi = Math.max(...vals);
     const pad = (hi - lo) * 0.12 || Math.max(hi * 0.02, 0.5);
