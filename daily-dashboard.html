@@ -336,12 +336,11 @@
         }
 
         .kpi-label {
-            font-size: 12px;
+            font-size: 24px;
+            line-height: 1.2;
             color: #555;
-            /* One line; cut with "..." only if the card is too narrow */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            /* Wraps onto a second line if the card is too narrow, so nothing is cut */
+            white-space: normal;
         }
 
         .kpi-value {
