@@ -7,8 +7,10 @@
 <title>Credit Balance Tracker</title>
 <style>
   :root {
-    --bg: #eef5fc; --panel: #ffffff; --border: #cdddee;
-    --text: #1f2a37; --muted: #5b6b7b; --grid: #e6eef6;
+    --bg: #eef5fc; --panel: #fdf6f2; --border: #cdddee;   /* panel: Claude API page colour (light peach) */
+    --text: #1f2a37; --muted: #5b6b7b; --grid: #f2e2d8;
+    --theme: #b4532a;    /* Claude API dashboard colour (dark terracotta): Rs amounts, selected buttons */
+    --card-border: #efd8ca;
     --up: #15a35b; --down: #e5484d; --accent: #2f6fb0;
     --barbg: #d7e9fb;   /* light-blue nav / sidebar / status bars */
   }
@@ -43,12 +45,12 @@
     text-shadow: 0 0 6px #fff, 0 0 6px #fff, 0 0 6px #fff; }
   .overlay .brand { font-size: 36px; font-weight: 700; color: #222; margin-bottom: 6px; text-align: center; }  /* same size as the other dashboards' chart titles */
   .overlay .price { font-size: 30px; line-height: 1.1; }
-  .overlay .price-inr { font-size: 20px; font-weight: 600; color: var(--accent); }
+  .overlay .price-inr { font-size: 20px; font-weight: 600; color: var(--theme); }
   .overlay .price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .overlay .chg { margin-top: 0; }
   h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
   .sub { color: var(--muted); margin: 0 0 24px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 0; padding: 20px;
+  .card { background: var(--panel); border: 1px solid var(--card-border); border-radius: 0; padding: 20px;
     height: 100%; display: flex; flex-direction: column; }
   .head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
   .label { color: var(--muted); font-size: 13px; }
@@ -81,7 +83,7 @@
   .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
   .ptlabel { fill: var(--text); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
     stroke: var(--panel); stroke-width: 5px; paint-order: stroke; }
-  .ptlabel .inr { fill: var(--accent); font-size: 16px; font-weight: 600; }
+  .ptlabel .inr { fill: var(--theme); font-size: 16px; font-weight: 600; }
   .tip {
     position: absolute; pointer-events: none; background: #fff; color: var(--text); border: 1px solid var(--border);
     border-radius: 8px; padding: 6px 10px; font-size: 12px; white-space: nowrap; display: none;
@@ -90,7 +92,7 @@
   }
   .tip b { font-size: 14px; display: block; }
   .stats { display: grid; grid-template-columns: 1fr; gap: 10px; }
-  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .stat { background: var(--panel); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px 14px; }
   .stat .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
   .empty { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
   .live { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 8px; vertical-align: middle; }

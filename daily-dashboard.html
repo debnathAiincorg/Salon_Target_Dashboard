@@ -243,6 +243,28 @@
 
         /* Pages of the Claude API dashboard, shown inside the rotation.
            They fill the whole space between the bars, with no gap or frame around them. */
+        /* Each dashboard has its own colour: Salon blue, Gold gold (Claude API terracotta is
+           set in its own pages). The top, left and bottom bars stay the same for all. */
+        .chart-card[data-group="Salon"] {
+            background-color: #f3f9ff;  /* light blue */
+            border-color: #cfe6fa;
+        }
+
+        .chart-card[data-group="Salon"] .kpi-card {
+            background-color: #fff;
+        }
+
+        .chart-card[data-group="Gold"] {
+            background-color: #fdf8ea;  /* light cream */
+            border-color: #efdca6;
+        }
+
+        .chart-card[data-group="Gold"] .kpi-card {
+            background-color: #fff;
+            border-color: #efdca6;
+            border-left-color: #d4a017;  /* gold */
+        }
+
         .chart-card.embed-card {
             margin: calc(-1 * var(--main-pad-y)) calc(-1 * var(--main-pad-x));
             padding: 0;
