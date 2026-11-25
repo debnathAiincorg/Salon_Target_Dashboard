@@ -1,5 +1,5 @@
 {
-  "last_updated": "24 November 2026, 10:01 AM IST",
+  "last_updated": "25 November 2026, 2:00 PM IST",
   "source": "Tanishq (miabytanishq.com rate page)",
   "unit": "INR per gram",
   "chart_days": 31,
@@ -255,6 +255,13 @@
       "22k": 11650.0,
       "24k": 12709.0,
       "18k": 9532.0
+    },
+    {
+      "date": "2026-11-25",
+      "22k": 11470.0,
+      "source": "https://www.goodreturns.in/news/gold-rates-today-25-11-2026-crashes-24k-22k-18k-gold-prices-ibja-tanishq-joyalukkas-kalyan-malabar-1549431.html",
+      "24k": 12513.0,
+      "18k": 9385.0
     }
   ],
   "articles_read": [
@@ -269,6 +276,7 @@
     "https://www.goodreturns.in/news/gold-rates-today-20-10-2026-on-dussehra-24k-22k-18k-gold-prices-at-tanishq-ibja-joyalukkas-malabar-1542635.html",
     "https://www.goodreturns.in/news/gold-rates-today-21-10-2026-flat-after-crash-24k-22k-18k-gold-prices-tanishq-ibja-joyalukkas-malabar-1542821.html",
     "https://www.goodreturns.in/news/gold-rates-today-24-october-2026-rises-in-tanishq-joyalukkas-ibja-malabar-24k-22k-18k-gold-prices-1543259.html",
+    "https://www.goodreturns.in/news/gold-rates-today-25-11-2026-crashes-24k-22k-18k-gold-prices-ibja-tanishq-joyalukkas-kalyan-malabar-1549431.html",
     "https://www.goodreturns.in/news/gold-rates-today-4-11-2026-24k-22k-18k-gold-prices-jump-at-tanishq-ibja-malabar-joyalukkas-dhanteras-1545121.html",
     "https://www.goodreturns.in/news/gold-rates-today-8-11-2026-check-24k-22k-18k-gold-prices-tanishq-ibja-malabar-joyalukkas-on-diwali-1545963.html",
     "https://www.goodreturns.in/news/gold-rates-today-rise-at-tanishq-24k-22k-18k-prices-ibja-malabar-joyalukkas-what-are-making-charges-1546955.html",
