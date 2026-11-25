@@ -305,25 +305,24 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 2px;
-            padding: 8px 14px;
+            gap: 4px;
+            padding: 12px 20px;
             background-color: #f5fafe;
             border: 1px solid #d6e9f8;
-            border-left: 4px solid #1ca0f2;  /* chart blue */
+            border-left: 6px solid #1ca0f2;  /* chart blue */
             border-radius: 8px;
         }
 
         .kpi-label {
-            font-size: 12px;
+            font-size: 24px;
+            line-height: 1.2;
             color: #555;
-            /* One line; cut with "..." only if the card is too narrow */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            /* Wraps onto a second line if the card is too narrow, so nothing is cut */
+            white-space: normal;
         }
 
         .kpi-value {
-            font-size: 22px;
+            font-size: 44px;
             font-weight: 700;
             line-height: 1.2;
             color: #000;
