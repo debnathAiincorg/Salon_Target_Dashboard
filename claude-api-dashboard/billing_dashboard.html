@@ -81,9 +81,9 @@
   .chart { position: relative; margin-top: 0; flex: 1; min-height: 300px; }
   svg { display: block; width: 100%; height: 100%; }
   .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-  .ptlabel { fill: var(--text); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
-    stroke: var(--panel); stroke-width: 5px; paint-order: stroke; }
-  .ptlabel .inr { fill: var(--theme); font-size: 16px; font-weight: 600; }
+  .ptbox { fill: #fff; stroke: var(--card-border); stroke-width: 1; }
+  .ptlabel { fill: var(--text); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ptlabel .inr { fill: var(--theme); font-size: 12px; font-weight: 600; }
   .tip {
     position: absolute; pointer-events: none; background: #fff; color: var(--text); border: 1px solid var(--border);
     border-radius: 8px; padding: 6px 10px; font-size: 12px; white-space: nowrap; display: none;
@@ -111,6 +111,7 @@
     .app { grid-template-columns: 1fr; grid-template-areas: "top" "main" "bottom"; }
     .leftbar { display: none; }
     .price { font-size: 32px; }
+    .overlay .brand { font-size: 24px; }
   }
 </style>
 </head>
@@ -220,6 +221,9 @@
 
     const W = chart.clientWidth, H = chart.clientHeight;
     const m = { l: 8, r: 64, t: 135, b: 26 };  // extra top room for the balance overlay + big labels
+    // the chart starts below the balance summary, however tall it is (it wraps on phones)
+    const ov = document.querySelector(".overlay");
+    if (ov) m.t = Math.max(m.t, ov.getBoundingClientRect().bottom - chart.getBoundingClientRect().top + 16);
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     let lo = Math.min(...vals), hi = Math.max(...vals);
     const pad = (hi - lo) * 0.12 || Math.max(hi * 0.02, 0.5);
@@ -246,7 +250,7 @@
     }
 
     // time axis (a few evenly spaced labels)
-    const ticks = Math.min(5, pts.length);
+    const ticks = Math.max(2, Math.min(5, pts.length, Math.floor((W - m.l - m.r) / 120)));
     for (let i = 0; i < ticks; i++) {
       const t = ticks === 1 ? t0 : t0 + span * i / (ticks - 1);
       const anchor = ticks === 1 ? "middle" : i === 0 ? "start" : i === ticks - 1 ? "end" : "middle";
@@ -264,56 +268,99 @@
       el("path", { d: line + `L${x(t1)},${m.t + ih}L${x(t0)},${m.t + ih}Z`, fill: "url(#fill)" }, svg);
       el("path", { d: line, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
     }
-    // A dot and an amount at every point where the balance CHANGED (plus the first point).
-    // Each label tries several spots around its dot (above, below, left, right, further out)
-    // and takes the first one that overlaps no other label and no other dot.
-    const placed = [];
-    const LW = 80, LH = 44;   // label box (2 lines: $ and ₹); box top = baseline - 18
+    // A dot and a small callout box ($ and Rs) at every point where the balance CHANGED
+    // (plus the first point). Each box goes straight above or below its dot if there is
+    // room, otherwise a little further out; a thin connector always joins box and dot.
+    // A box never covers the line, a dot, another box or the balance summary (top left).
+    const BW = 70, BH = 38, GAP = 10;   // callout box size and its distance from the dot
     const dots = pts.filter((p, i) => !p.carried && (i === 0 || p.v !== pts[i - 1].v))
       .map(p => ({ p, px: x(+p.t), py: y(p.v) }));
-    const boxOf = (lx, ty, anchor) => {
-      const left = anchor === "start" ? lx : anchor === "end" ? lx - LW : lx - LW / 2;
-      return { l: left, r: left + LW, t: ty - 18, b: ty - 18 + LH };
+    // points along the drawn line, every 3 px, so boxes can keep clear of it
+    const path = [];
+    for (let i = 1; i < pts.length; i++) {
+      const ax = x(+pts[i - 1].t), ay = y(pts[i - 1].v), bx = x(+pts[i].t), by = y(pts[i].v);
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 3));
+      for (let k = 0; k <= n; k++) path.push([ax + (bx - ax) * k / n, ay + (by - ay) * k / n]);
+    }
+    // do segments (a,b)-(c,d) and (e,f)-(g,h) cross? (touching at an end does not count)
+    const cross = (a, b, c, d, e, f, g, h) => {
+      const o = (x1, y1, x2, y2, x3, y3) => Math.sign((x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1));
+      return o(a, b, c, d, e, f) * o(a, b, c, d, g, h) < 0 && o(e, f, g, h, a, b) * o(e, f, g, h, c, d) < 0;
     };
-    const hits = (bx, a) => bx.l < a.r && a.l < bx.r && bx.t < a.b && a.t < bx.b;
-    const fits = bx => bx.t > m.t - 40 && bx.b < m.t + ih && bx.l >= m.l && bx.r <= m.l + iw &&
-      !(bx.t < m.t + 10 && bx.l < m.l + 330) &&             // behind the balance box, top-left
-      placed.every(a => !hits(bx, a)) &&
-      dots.every(d => !hits(bx, { l: d.px - 5, r: d.px + 5, t: d.py - 5, b: d.py + 5 }));
-    dots.forEach(({ p, px, py }) => {
-      el("circle", { cx: px, cy: py, r: 3, fill: color, stroke: "var(--panel)", "stroke-width": 1.5 }, svg);
-    });
-    dots.forEach(({ p, px, py }, i) => {
-      const near = [
-        [px, py - 32, "middle"], [px, py + 24, "middle"],
-        [px + 8, py - 4, "start"], [px - 8, py - 4, "end"],
-        [px + 8, py - 32, "start"], [px - 8, py - 32, "end"],
-        [px + 8, py + 24, "start"], [px - 8, py + 24, "end"],
-        [px, py - 76, "middle"], [px, py + 68, "middle"],
-      ];
-      // When points are bunched together, try spots further out (nearest first); a thin
-      // line then joins the label to its dot so it is clear which point it belongs to.
-      const far = [];
-      for (const dy of [-32, 24, -76, 68, -120, 112, -164, 156])
-        for (const dx of [90, -90, 180, -180, 270, -270])
-          far.push([px + dx, py + dy, "middle"]);
-      far.sort((a, b) => Math.hypot(a[0] - px, a[1] - py) - Math.hypot(b[0] - px, b[1] - py));
-      const cands = near.concat(far);
-      const pick = cands.find(([lx, ty, an]) => fits(boxOf(lx, ty, an)));
-      // No free spot anywhere (only on very narrow screens): leave this label out rather
-      // than draw it on top of another one; its dot stays and hovering it shows the amount.
-      if (!pick) return;
-      const [lx, ty, an] = pick;
-      const box = boxOf(lx, ty, an);
-      placed.push(box);
-      if (near.indexOf(pick) < 0) {
-        // leader line from the dot to the nearest point of the label box
-        const ex = Math.min(Math.max(px, box.l), box.r), ey = Math.min(Math.max(py, box.t), box.b);
-        el("line", { x1: px, y1: py, x2: ex, y2: ey, stroke: "var(--muted)", "stroke-width": 1, "stroke-opacity": 0.7 }, svg);
+    const hits = (q, a) => q.l < a.r && a.l < q.r && q.t < a.b && a.t < q.b;
+    const boxAt = (cx, top) => ({ l: cx - BW / 2, r: cx + BW / 2, t: top, b: top + BH });
+    const onLine = (qx, qy) => path.some(([lx, ly]) => Math.abs(lx - qx) < 2 && Math.abs(ly - qy) < 2);
+    // candidate boxes for each dot, nearest first
+    const candsOf = ({ px, py }) => {
+      const c = [];
+      for (const lvl of [0, 1, 2, 3, 4, 5])
+        for (const dx of [0, -0.6, 0.6, -1.2, 1.2, -1.8, 1.8, -2.4, 2.4])
+          for (const up of [true, false])
+            c.push(boxAt(px + dx * BW, up ? py - GAP - BH - lvl * (BH + 8) : py + GAP + lvl * (BH + 8)));
+      // beside the dot, to the right or left, a little above or below its height
+      for (const dy of [-BH / 2, -BH - 4, 4, -BH * 1.5 - 8, BH / 2 + 8])
+        for (const side of [1, -1]) c.push(boxAt(px + side * (GAP + BW / 2 + 4), py + dy));
+      // connector end: the nearest point on the box edge
+      const end = q => {
+        const ex = Math.min(Math.max(px, q.l), q.r), ey = Math.min(Math.max(py, q.t), q.b);
+        return ex > q.l && ex < q.r ? [Math.min(Math.max(px, q.l + 6), q.r - 6), ey] : [ex, ey];
+      };
+      return c.map(q => ({ q, e: end(q), d: Math.hypot(end(q)[0] - px, end(q)[1] - py) }))
+        .sort((u, v) => u.d - v.d);
+    };
+    // Place every box in the given order; returns the boxes and how untidy the result is.
+    // A box must stay inside the chart and off the line, the dots, other boxes and the
+    // balance summary. Its connector should not cross another connector, another box,
+    // a dot or the line; long connectors also count against a layout.
+    const layout = order => {
+      const placed = [], links = [], out = new Array(dots.length);
+      let total = 0;
+      for (const i of order) {
+        const { px, py } = dots[i];
+        let pick = null, best = Infinity;
+        for (const { q, e: [ex, ey], d } of candsOf(dots[i])) {
+          if (d / 4 >= best) break;   // nearest first: nothing further can beat it
+          // inside the chart area (the balance summary sits just above it)
+          if (!(q.t >= m.t - 6 && q.b <= m.t + ih && q.l >= m.l && q.r <= m.l + iw)) continue;
+          if (placed.some(a => hits(q, { l: a.l - 4, r: a.r + 4, t: a.t - 4, b: a.b + 4 }))) continue;
+          if (dots.some(o => hits(q, { l: o.px - 6, r: o.px + 6, t: o.py - 6, b: o.py + 6 }))) continue;
+          if (path.some(([lx, ly]) => lx > q.l - 3 && lx < q.r + 3 && ly > q.t - 3 && ly < q.b + 3)) continue;
+          let c = d / 4 + 100 * links.filter(([a, b, c2, dd]) => cross(px, py, ex, ey, a, b, c2, dd)).length;
+          const n = Math.max(1, Math.ceil(d / 3));
+          let line = false;
+          for (let k = 2; k < n; k++) {
+            const qx = px + (ex - px) * k / n, qy = py + (ey - py) * k / n;
+            if (placed.some(a => qx > a.l && qx < a.r && qy > a.t && qy < a.b)) c += 100;
+            if (dots.some(o => o !== dots[i] && Math.hypot(o.px - qx, o.py - qy) < 5)) c += 100;
+            if (!line && Math.hypot(qx - px, qy - py) > 8 && onLine(qx, qy)) { line = true; c += 25; }
+          }
+          if (c < best) { best = c; pick = { q, ex, ey }; }
+        }
+        // no room at all, or (on phones) only with a connector crossing something:
+        // leave this one out; hovering its dot still shows the amount
+        if (!pick || (best >= 100 && W < 700)) { total += 500; continue; }
+        placed.push(pick.q); links.push([px, py, pick.ex, pick.ey]);
+        out[i] = pick; total += best;
       }
-      const t = el("text", { x: lx, y: ty, class: "ptlabel", "text-anchor": an }, svg);
-      el("tspan", { x: lx }, t).textContent = money(p.v);
-      el("tspan", { x: lx, dy: "1.15em", class: "inr" }, t).textContent = inr(p.v);
+      return { out, total };
+    };
+    // try a few orders (left to right, right to left, most crowded first) and keep the tidiest
+    const idx = dots.map((_, i) => i);
+    const crowd = i => dots.filter(o => Math.abs(o.px - dots[i].px) < BW * 1.5 && Math.abs(o.py - dots[i].py) < BH * 2).length;
+    const orders = [idx, [...idx].reverse(), [...idx].sort((u, v) => crowd(v) - crowd(u) || u - v)];
+    const best = orders.map(layout).sort((u, v) => u.total - v.total)[0];
+    dots.forEach(({ p, px, py }, i) => {
+      const pick = best.out[i];
+      if (!pick) return;   // no free spot at all (very narrow screens): hover the dot for the amount
+      const box = pick.q;
+      el("line", { x1: px, y1: py, x2: pick.ex, y2: pick.ey, stroke: color, "stroke-width": 1, "stroke-opacity": 0.5 }, svg);
+      el("rect", { x: box.l, y: box.t, width: BW, height: BH, rx: 6, class: "ptbox" }, svg);
+      const t = el("text", { x: box.l + BW / 2, y: box.t + 17, class: "ptlabel", "text-anchor": "middle" }, svg);
+      el("tspan", { x: box.l + BW / 2 }, t).textContent = money(p.v);
+      el("tspan", { x: box.l + BW / 2, dy: "1.25em", class: "inr" }, t).textContent = inr(p.v);
+    });
+    dots.forEach(({ px, py }) => {
+      el("circle", { cx: px, cy: py, r: 3.5, fill: color, stroke: "#fff", "stroke-width": 1.5 }, svg);
     });
 
     // last-price dashed line + dot
