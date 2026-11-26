@@ -43,12 +43,12 @@
     },
     {
       "month": "November",
-      "total_sales": 68905
+      "total_sales": 69945
     }
   ],
   "monthly_target": 60000,
-  "year_total_sales": 798860,
-  "average_monthly_sales": 72624,
-  "year_daily_average": 2428,
-  "last_updated": "26 November 2026, 12:00 PM IST"
+  "year_total_sales": 799900,
+  "average_monthly_sales": 72718,
+  "year_daily_average": 2431,
+  "last_updated": "26 November 2026, 1:00 PM IST"
 }
