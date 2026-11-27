@@ -1,8 +1,8 @@
 {
-  "current_date_label": "27 November",
+  "current_date_label": "28 November",
   "current_week_sales": 16919,
   "current_week_balance": 0,
-  "remaining_days": 3,
+  "remaining_days": 2,
   "previous_week_sales": 13049,
   "monthly_sales": 72695,
   "daily_chart_data": [
@@ -160,9 +160,9 @@
   "weekly_target": 15000,
   "week_number": 48,
   "month_label": "November 2026",
-  "current_week_daily_average": 4230,
+  "current_week_daily_average": 3384,
   "previous_week_daily_average": 1864,
-  "current_month_daily_average": 2796,
+  "current_month_daily_average": 2692,
   "previous_month_daily_average": 4798,
-  "last_updated": "27 November 2026, 11:00 PM IST"
+  "last_updated": "28 November 2026, 12:00 AM IST"
 }
